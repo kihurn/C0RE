@@ -138,7 +138,7 @@
   </main>
 
   <footer class="foot">
-    <span>c0re 0.2 // private ai gateway</span>
+    <span>c0re {__C0RE_VERSION__} // private gateway</span>
     <span class="blocks" aria-hidden="true">░▒▓█▓▒░</span>
     <span>{host}:{location.port || '80'}</span>
   </footer>
@@ -196,10 +196,11 @@
   .sys-gpu.spill {
     color: var(--red);
   }
+  /* Above the page's scanline overlay, so the wordmark stays crisp. */
   .nav {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 60;
     background: rgba(7, 7, 7, 0.94);
     border-bottom: 1px solid var(--line);
   }
@@ -255,11 +256,6 @@
     content: './';
     opacity: 0.5;
   }
-  ul a:hover,
-  .logout:hover {
-    color: var(--white);
-    border-color: var(--white);
-  }
   ul a[aria-current='page'] {
     background: var(--white);
     color: var(--bg);
@@ -267,8 +263,16 @@
   ul a[aria-current='page']::before {
     opacity: 0.8;
   }
-  .logout:hover {
-    color: var(--red);
+  /* Hover only with a mouse; on a phone a tap would leave it stuck. */
+  @media (hover: hover) and (pointer: fine) {
+    ul a:not([aria-current='page']):hover,
+    .logout:hover {
+      color: var(--white);
+      border-color: var(--white);
+    }
+    .logout:hover {
+      color: var(--red);
+    }
   }
   main {
     max-width: 1180px;
@@ -316,10 +320,14 @@
       overflow-x: auto;
       scrollbar-width: none;
     }
+    /* Thumb-sized targets. */
     ul a,
     .logout {
       white-space: nowrap;
-      padding: 5px 10px;
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 12px;
     }
     main {
       padding: 24px 16px 40px;

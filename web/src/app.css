@@ -12,7 +12,7 @@
   --line-strong: #4a4a4a;
   --text: #f2f2f2;
   --text-2: #969696;
-  --text-3: #5e5e5e;
+  --text-3: #7d7d7d; /* 4.9:1 on --bg: the faintest text that still reads */
   --white: #ffffff;
   --red: #ff3d3d;
   --red-dim: rgba(255, 61, 61, 0.12);
@@ -28,11 +28,17 @@
   --ui: 'Fragment Mono', ui-monospace, Consolas, monospace;
   --mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
   --term: 'VT323', ui-monospace, monospace;
+  /* Strong ease-out: responds at once, settles softly. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
   box-sizing: border-box;
   border-radius: 0;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -49,6 +55,7 @@ body {
   background-image: radial-gradient(var(--line) 1px, transparent 1.5px);
   background-size: 22px 22px;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body::before {
@@ -57,8 +64,15 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 50;
-  background: repeating-linear-gradient(transparent 0, transparent 2px, rgba(0, 0, 0, 0.22) 3px, transparent 4px);
-  mix-blend-mode: multiply;
+  /* Plain translucent lines: no blend mode, so scrolling doesn't recomposite the page. */
+  background: repeating-linear-gradient(transparent 0, transparent 2px, rgba(0, 0, 0, 0.18) 3px, transparent 4px);
+}
+
+/* Phones get the clean page: the effect costs scrolling smoothness there. */
+@media (pointer: coarse) {
+  body::before {
+    content: none;
+  }
 }
 
 button,
@@ -176,7 +190,7 @@ label.field,
   cursor: pointer;
   text-transform: lowercase;
   white-space: nowrap;
-  transition: transform 0.08s, box-shadow 0.08s;
+  transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
 }
 
 .btn::before {
@@ -185,13 +199,6 @@ label.field,
 
 .btn::after {
   content: ' ]';
-}
-
-/* Hover inverts: outlined turns white, white turns red, red fills. */
-.btn:hover:not(:disabled) {
-  background: var(--white);
-  border-color: var(--white);
-  color: var(--bg);
 }
 
 .btn:active:not(:disabled) {
@@ -208,13 +215,6 @@ label.field,
   background: var(--white);
   border-color: var(--white);
   color: var(--bg);
-}
-
-.btn.primary:hover:not(:disabled),
-.btn.danger:hover:not(:disabled) {
-  background: var(--red);
-  border-color: var(--red);
-  color: var(--white);
 }
 
 .btn.danger {
@@ -236,10 +236,6 @@ label.field,
   content: none;
 }
 
-.btn.icon:hover:not(:disabled) {
-  border-color: var(--white);
-}
-
 .link {
   background: none;
   border: 0;
@@ -248,10 +244,6 @@ label.field,
   cursor: pointer;
   text-decoration: underline dotted;
   text-underline-offset: 4px;
-}
-
-.link:hover {
-  color: var(--red);
 }
 
 /* Status tags: [ PRIVATE ]. Always a word; colour only adds to it. */
@@ -304,10 +296,6 @@ td {
   vertical-align: middle;
 }
 
-tbody tr:hover td {
-  background: var(--surface-2);
-}
-
 tr:last-child td {
   border-bottom: 0;
 }
@@ -345,6 +333,17 @@ select {
   font-size: 14px;
   letter-spacing: 0;
   text-transform: none;
+}
+
+/* iPhone zooms the page into any field under 16px; phones get 16px. */
+@media (pointer: coarse) {
+  input[type='text'],
+  input[type='password'],
+  input[type='number'],
+  input[type='url'],
+  select {
+    font-size: 16px;
+  }
 }
 
 input:focus-visible,
@@ -400,20 +399,16 @@ input[type='checkbox']:checked::after {
   border-left: 1px solid var(--line-strong);
 }
 
-.segmented button:hover {
-  color: var(--white);
-}
-
 .segmented button[aria-checked='true'] {
   background: var(--white);
   color: var(--bg);
 }
 
-/* Toggle: a square switch with a square knob. */
+/* Toggle: a square switch with a square knob, labelled OFF / ON so it reads at a glance. */
 .toggle {
   position: relative;
-  width: 46px;
-  height: 24px;
+  width: 72px;
+  height: 28px;
   border: 1px solid var(--line-strong);
   background: var(--bg);
   cursor: pointer;
@@ -421,28 +416,48 @@ input[type='checkbox']:checked::after {
   flex: none;
 }
 
+.toggle::before {
+  content: 'OFF';
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-2);
+}
+
 .toggle::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
   background: var(--text-3);
-  transition: transform 0.12s;
+  transition: transform 160ms var(--ease-out);
 }
 
-.toggle:hover:not(:disabled) {
-  border-color: var(--white);
+.toggle[aria-checked='true']::before {
+  content: 'ON';
+  right: auto;
+  left: 11px;
+  color: var(--bg);
 }
 
 .toggle[aria-checked='true'] {
   border-color: var(--white);
+  background: var(--white);
 }
 
 .toggle[aria-checked='true']::after {
-  transform: translateX(22px);
-  background: var(--white);
+  transform: translateX(44px);
+  background: var(--bg);
+}
+
+.toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .message {
@@ -478,6 +493,29 @@ dialog::backdrop {
   background: rgba(0, 0, 0, 0.78);
 }
 
+/* Popups fade in and grow from 97% (centred: they aren't anchored to a trigger). */
+dialog[open] {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+
+dialog[open]::backdrop {
+  opacity: 1;
+  transition: opacity 150ms var(--ease-out);
+}
+
+@starting-style {
+  dialog[open] {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -485,6 +523,49 @@ dialog::backdrop {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Hover effects only where there's a mouse: on a phone a tap would leave them stuck on.
+   Hover inverts: outlined turns white, white turns red, red fills. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) {
+    background: var(--white);
+    border-color: var(--white);
+    color: var(--bg);
+  }
+
+  .btn.primary:hover:not(:disabled),
+  .btn.danger:hover:not(:disabled) {
+    background: var(--red);
+    border-color: var(--red);
+    color: var(--white);
+  }
+
+  .btn.icon:hover:not(:disabled) {
+    background: transparent;
+    border-color: var(--white);
+    color: var(--white);
+  }
+
+  .link:hover {
+    color: var(--red);
+  }
+
+  tbody tr:hover td {
+    background: var(--surface-2);
+  }
+
+  .segmented button:hover {
+    color: var(--white);
+  }
+
+  .segmented button[aria-checked='true']:hover {
+    color: var(--bg);
+  }
+
+  .toggle:hover:not(:disabled) {
+    border-color: var(--white);
+  }
 }
 
 @keyframes blink {

@@ -72,9 +72,11 @@
     background: var(--text);
     min-height: 0;
   }
-  .col:hover .ok {
-    background: var(--white);
-    box-shadow: 0 0 0 1px var(--white);
+  @media (hover: hover) and (pointer: fine) {
+    .col:hover .ok {
+      background: var(--white);
+      box-shadow: 0 0 0 1px var(--white);
+    }
   }
   .bad {
     background: var(--red);

@@ -209,7 +209,7 @@ async fn forward(
         Ok(r) => r,
         Err(e) => {
             tracing::warn!("Ollama unreachable: {e}");
-            return log.deny(Denied::new(503, "engine_offline", "The AI engine is not running on the PC."));
+            return log.deny(Denied::new(503, "engine_offline", "The engine is not running on the PC."));
         }
     };
     let status = upstream.status();
@@ -228,7 +228,7 @@ async fn forward(
     if matches!(route, Route::Tags | Route::Ps | Route::OpenAiModels) && status.is_success() {
         let mut v: Value = match upstream.json().await {
             Ok(v) => v,
-            Err(_) => return log.deny(Denied::new(502, "engine_offline", "The AI engine sent an unreadable reply.")),
+            Err(_) => return log.deny(Denied::new(502, "engine_offline", "The engine sent an unreadable reply.")),
         };
         let field = if route == Route::OpenAiModels { ("data", "id") } else { ("models", "name") };
         if let Some(list) = v.get_mut(field.0).and_then(Value::as_array_mut) {

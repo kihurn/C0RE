@@ -44,6 +44,14 @@ PC can show. Note anything that fails with what you did and what you saw.
 - [ ] Open `%LOCALAPPDATA%\C0RE\c0re.db` in Notepad and search for the start of a key:
       not found (it's stored encrypted).
 
+## Dashboard (0.3)
+
+- [ ] Overview's ring shows **GPU LOAD** with temperature and watts; it rises while a model
+      is answering and falls back when idle. The boot log has a `gpu rtx 4070 super` line.
+- [ ] "VRAM IN USE" matches Task Manager → Performance → GPU → Dedicated GPU memory.
+- [ ] Settings and the key editor use sliders; saved values stick after a reload.
+- [ ] The footer says `c0re 0.3.0`.
+
 ## Public entrance
 
 - [ ] `c0re public on` (or the Settings toggle) gives an `https://…ts.net:8443` URL, or a

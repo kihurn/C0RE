@@ -1,6 +1,6 @@
 # C0RE
 
-A private AI gateway for your own PC. C0RE sits in front of [Ollama](https://ollama.com) and
+A private gateway for your own PC. C0RE sits in front of [Ollama](https://ollama.com) and
 lets your projects use your GPU from anywhere — each with its own key — without ever
 exposing Ollama itself.
 
@@ -31,5 +31,4 @@ cargo run -- serve                            # run locally (C0RE_HOME=./tmp to 
 bash scripts/build-release.sh                 # Windows zip + source zip + git bundle
 ```
 
-Design and plan: `docs/superpowers/specs/2026-10-30-c0re-design.md`,
-`docs/superpowers/plans/2026-10-30-c0re.md`. Dashboard design notes: `web/DESIGN.md`.
+Dashboard design notes: `web/DESIGN.md`.

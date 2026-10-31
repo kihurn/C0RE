@@ -38,3 +38,15 @@ sideways, the gauge sits above the boot log.
 
 Motion: the ring lighting up, boot lines appearing, the ticker (pauses on hover), the
 cursor and the log light blinking. All of it stops for reduced-motion users.
+
+## Craft rules (from the emil-design-eng review, 0.3.1)
+
+- Hover effects only with a mouse (`@media (hover: hover) and (pointer: fine)`); phones
+  get no stuck hovers, no grey tap flash, 16px inputs (no zoom), 44px nav targets, `dvh`.
+- Live data doesn't animate on every refresh: the ring sweeps once on open, then follows
+  the value in 120 ms. New request rows flash once (700 ms) to show what changed.
+- One easing curve for UI motion: `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`; button
+  press 120 ms, toggle 160 ms, popups 150 ms fade + scale from 0.97.
+- Faintest text is `#7d7d7d` (4.9:1). Scanlines are plain translucent lines (no blend
+  mode) and are off on touch screens.
+- The ticker only carries what the page doesn't already show.

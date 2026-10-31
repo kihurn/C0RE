@@ -107,13 +107,21 @@
     border: 0;
     box-shadow: 3px 3px 0 var(--line);
   }
-  input:hover::-webkit-slider-thumb,
-  input:focus-visible::-webkit-slider-thumb {
+  input:focus-visible::-webkit-slider-thumb,
+  input:active::-webkit-slider-thumb {
     background: var(--red);
   }
-  input:hover::-moz-range-thumb,
-  input:focus-visible::-moz-range-thumb {
+  input:focus-visible::-moz-range-thumb,
+  input:active::-moz-range-thumb {
     background: var(--red);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    input:hover::-webkit-slider-thumb {
+      background: var(--red);
+    }
+    input:hover::-moz-range-thumb {
+      background: var(--red);
+    }
   }
   input:focus-visible {
     outline: 1px solid var(--white);

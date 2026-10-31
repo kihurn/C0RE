@@ -260,7 +260,7 @@ async fn usage(State(s): St, _a: Authed, Query(q): Query<UsageQuery>) -> Respons
 
 async fn models(State(s): St, _a: Authed) -> Response {
     let Some(tags) = engine_get(&s, "/api/tags").await else {
-        return err(503, "engine_offline", "The AI engine is not running on the PC.");
+        return err(503, "engine_offline", "The engine is not running on the PC.");
     };
     let loaded: Vec<String> = engine_get(&s, "/api/ps")
         .await

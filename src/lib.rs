@@ -1,4 +1,4 @@
-//! C0RE: a private AI gateway in front of a local Ollama.
+//! C0RE: a private gateway in front of a local Ollama.
 
 pub mod admin;
 pub mod cli;

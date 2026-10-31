@@ -10,7 +10,7 @@ file and the browser updates within a second. Nothing on the PC changes.
 Once (needs Node.js 22+, `brew install node`):
 
 ```bash
-cd c0re/web
+cd .\web\
 npm install
 ```
 

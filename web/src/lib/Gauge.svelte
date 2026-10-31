@@ -1,7 +1,8 @@
 <script lang="ts">
   // The engine as a pixel ring filled to `percent` (live GPU load). Lit cells turn red when
   // `alarm` is set (part of a model spilled onto the CPU). Unlit cells stay dim; sparse red
-  // when the engine is offline. Cells change one after another, so each update sweeps round.
+  // when the engine is offline. It lights up cell by cell once, when the page opens; after
+  // that it follows the live value at once, so the number and the ring never disagree.
   import { onMount } from 'svelte'
 
   let {
@@ -24,10 +25,16 @@
     return out.sort((p, q) => p.a - q.a)
   })()
 
+  const STAGGER_MS = 5
   let ready = $state(false)
+  let swept = $state(false)
   onMount(() => {
     const t = requestAnimationFrame(() => (ready = true))
-    return () => cancelAnimationFrame(t)
+    const done = setTimeout(() => (swept = true), cells.length * STAGGER_MS + 300)
+    return () => {
+      cancelAnimationFrame(t)
+      clearTimeout(done)
+    }
   })
 
   let lit = $derived(online && percent != null ? Math.round((Math.max(0, Math.min(100, percent)) / 100) * cells.length) : 0)
@@ -41,7 +48,7 @@
 
 <svg width={size} height={size} viewBox="0 0 {N * 10} {N * 10}" aria-hidden="true">
   {#each cells as c, i (i)}
-    <rect x={c.x * 10 + 1} y={c.y * 10 + 1} width="8" height="8" class={cellClass(i)} style:transition-delay="{ready ? i * 6 : 0}ms" />
+    <rect x={c.x * 10 + 1} y={c.y * 10 + 1} width="8" height="8" class={cellClass(i)} class:swept style:transition-delay="{ready && !swept ? i * STAGGER_MS : 0}ms" />
   {/each}
 </svg>
 
@@ -51,7 +58,10 @@
     flex: none;
   }
   rect {
-    transition: fill 0.25s steps(2);
+    transition: fill 200ms steps(2);
+  }
+  rect.swept {
+    transition-duration: 120ms;
   }
   .dim {
     fill: var(--line);

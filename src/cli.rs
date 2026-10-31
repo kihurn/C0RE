@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Parser)]
-#[command(name = "c0re", version, about = "C0RE: your private AI gateway")]
+#[command(name = "c0re", version, about = "C0RE: your private gateway")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,

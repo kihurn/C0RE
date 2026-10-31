@@ -4,7 +4,7 @@
   import Bars from '../lib/Bars.svelte'
   import Gauge from '../lib/Gauge.svelte'
   import Ticker, { type Tick } from '../lib/Ticker.svelte'
-  import { clockTime, formatBytes, formatCount, formatDuration } from '../lib/format'
+  import { clockTime, formatBytes, formatCount, formatDuration, relativeTime } from '../lib/format'
 
   let {
     unauthorized,
@@ -19,6 +19,9 @@
   let data = $state<Overview | null>(null)
   let pub = $state<PublicState | null>(null)
   let error = $state('')
+  // Requests newer than this arrived since the last refresh, and flash once.
+  let freshAfter = $state<number | null>(null)
+  let newestSeen: number | null = null
 
   async function load() {
     const [o, p] = await Promise.all([api.overview(), api.publicState()])
@@ -28,6 +31,9 @@
       return
     }
     error = ''
+    const newest = o.data.recent.reduce((m, r) => Math.max(m, r.ts), 0)
+    freshAfter = newestSeen
+    newestSeen = newest
     data = o.data
     onengine(o.data.engine.online)
     if (p.ok) pub = p.data
@@ -73,20 +79,28 @@
   })
   const pad = (s: string) => `${s} `.padEnd(Math.max(28, s.length + 5), '.')
 
+  // The ticker carries what the rest of the page doesn't: how recent requests went.
   let ticks = $derived.by((): Tick[] => {
     if (!data) return []
+    const done = data.recent.filter((r) => !r.block_reason && r.status < 400)
+    const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
+    const took = avg(done.map((r) => r.latency_ms))
+    const first = avg(done.flatMap((r) => (r.ttfb_ms == null ? [] : [r.ttfb_ms])))
+    const tokens = done.reduce((a, r) => a + (tokensOf(r) ?? 0), 0)
+    const byProject = new Map<string, number>()
+    for (const r of data.recent) if (r.project) byProject.set(r.project, (byProject.get(r.project) ?? 0) + 1)
+    const busiest = [...byProject].sort((a, b) => b[1] - a[1])[0]
+    const last = data.recent[0]
     const t: Tick[] = [
-      { text: data.engine.online ? 'engine online' : 'engine offline', kind: data.engine.online ? 'inv' : 'red' },
-      { text: `${formatCount(data.today.requests)} req today`, kind: 'big' },
-      { text: model ? model.name : 'no model loaded' },
+      { text: last ? `last request ${relativeTime(last.ts)}` : 'no requests yet', kind: 'inv' },
+      ...(took != null ? [{ text: `${formatDuration(took)} avg answer`, kind: 'big' as const }] : []),
+      ...(first != null ? [{ text: `first word in ${formatDuration(first)}` }] : []),
       { text: '░▒▓█▓▒░', kind: 'blocks' },
-      { text: gpuLoad != null ? `gpu load ${gpuLoad}%` : model ? `${model.gpu_percent}% on gpu` : 'gpu idle', kind: model && model.gpu_percent < 100 ? 'red' : undefined },
-      ...(vram ? [{ text: `vram ${vram}` }] : []),
+      ...(tokens ? [{ text: `${formatCount(tokens)} tokens`, kind: 'big' as const }, { text: 'in the last 20 requests' }] : []),
+      ...(busiest ? [{ text: `busiest: ${busiest[0]}` }] : []),
       { text: 'private / public / off', kind: 'ghost' },
-      { text: `${formatCount(data.today.blocked)} blocked`, kind: data.today.blocked ? 'red' : undefined },
-      { text: `${formatCount(data.today.projects)} projects`, kind: 'big' },
-      { text: `${formatCount(data.entrances.private.requests)} via tailscale` },
-      { text: pub?.state === 'on' ? 'public address on' : 'public address off', kind: pub?.state === 'on' ? 'inv' : undefined }
+      ...(gpu?.power_w != null ? [{ text: `${gpu.power_w} w draw`, kind: 'big' as const }] : []),
+      ...(data.today.blocked ? [{ text: `${formatCount(data.today.blocked)} blocked today`, kind: 'red' as const }] : [])
     ]
     return t
   })
@@ -109,7 +123,7 @@
     <div class="hero-text">
       <ol class="boot">
         {#each log as l, i (i)}
-          <li style:animation-delay="{i * 90}ms">
+          <li style:animation-delay="{i * 40}ms">
             <span class="caret" aria-hidden="true">&gt;</span>
             {pad(l.label)} <b class:bad={l.bad}>{l.status}</b>
           </li>
@@ -219,7 +233,7 @@
             </thead>
             <tbody>
               {#each data.recent as r, i (`${r.ts}-${i}`)}
-                <tr class:blocked-row={!!r.block_reason}>
+                <tr class:blocked-row={!!r.block_reason} class:fresh={freshAfter != null && r.ts > freshAfter}>
                   <td class="num muted">{clockTime(r.ts)}</td>
                   <td>
                     {r.project ?? 'unknown key'}
@@ -406,8 +420,10 @@
     font-size: 13px;
     white-space: nowrap;
   }
-  .cmd:hover {
-    color: var(--red);
+  @media (hover: hover) and (pointer: fine) {
+    .cmd:hover {
+      color: var(--red);
+    }
   }
   .stats {
     display: grid;
@@ -469,6 +485,15 @@
   .small {
     font-size: 11px;
     margin-left: 6px;
+  }
+  /* A request that arrived since the last refresh flashes once. */
+  .fresh td {
+    animation: arrive 700ms var(--ease-out);
+  }
+  @keyframes arrive {
+    from {
+      background: var(--raise);
+    }
   }
   .blocked-row td:first-child {
     box-shadow: inset 2px 0 0 var(--red);
