@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Parser)]
-#[command(name = "c0re", version, about = "C0RE: your private gateway")]
+#[command(name = "c0re", version, about = "C0RE: your private AI gateway")]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -151,7 +151,7 @@ pub fn run(args: Vec<String>) -> Result<i32> {
 
 fn open(dir: &Path) -> Result<Arc<AppState>> {
     let cfg = Config::load_or_create(dir)?;
-    AppState::open(dir, Arc::new(SystemRunner { bin: cfg.tailscale_bin }))
+    AppState::open(dir, Arc::new(SystemRunner::new(cfg.tailscale_bin)))
 }
 
 /// Runs a command against the data folder `dir`, writing to `out` and reading from `input`.

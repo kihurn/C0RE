@@ -148,9 +148,11 @@ pub async fn mock_ollama(opts: MockOpts) -> Mock {
     Mock { url: format!("http://{addr}"), state }
 }
 
+type Reply = Box<dyn Fn(&[&str]) -> std::io::Result<CmdOutput> + Send>;
+
 pub struct FakeRunner {
     pub calls: Mutex<Vec<Vec<String>>>,
-    pub reply: Mutex<Box<dyn Fn(&[&str]) -> std::io::Result<CmdOutput> + Send>>,
+    pub reply: Mutex<Reply>,
 }
 
 impl FakeRunner {
@@ -158,7 +160,7 @@ impl FakeRunner {
         Arc::new(FakeRunner { calls: Mutex::new(vec![]), reply: Mutex::new(Box::new(reply)) })
     }
     pub fn ok(stdout: &str) -> std::io::Result<CmdOutput> {
-        Ok(CmdOutput { status: 0, stdout: stdout.into(), stderr: String::new() })
+        Ok(CmdOutput { status: 0, stdout: stdout.into(), ..Default::default() })
     }
 }
 

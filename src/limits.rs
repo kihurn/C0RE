@@ -30,7 +30,7 @@ impl Limiter {
     pub fn check_rate(&self, key: &Key, now: Instant) -> Result<(), Denied> {
         let cap = key.rate_per_min.max(1) as f64;
         let per_sec = cap / 60.0;
-        let mut map = self.buckets.lock().unwrap_or_else(|e| e.into_inner());
+        let mut map = self.buckets.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let b = map.entry(key.id.clone()).or_insert(Bucket { capacity: cap, tokens: cap, last: now });
         if b.capacity != cap {
             b.tokens = (b.tokens + cap - b.capacity).clamp(0.0, cap);
@@ -53,7 +53,7 @@ impl Limiter {
     pub fn try_enter(&self, key: &Key) -> Result<OwnedSemaphorePermit, Denied> {
         let limit = key.max_concurrent.max(1);
         let sem = {
-            let mut map = self.slots.lock().unwrap_or_else(|e| e.into_inner());
+            let mut map = self.slots.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             let entry = map.entry(key.id.clone()).or_insert_with(|| (limit, Arc::new(Semaphore::new(limit as usize))));
             if entry.0 != limit {
                 *entry = (limit, Arc::new(Semaphore::new(limit as usize)));
@@ -112,12 +112,12 @@ impl FailureBlocker {
     }
 
     pub fn is_blocked(&self, source: &str, now: Instant) -> bool {
-        let map = self.map.lock().unwrap_or_else(|e| e.into_inner());
+        let map = self.map.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         map.get(source).and_then(|f| f.blocked_until).is_some_and(|until| now < until)
     }
 
     pub fn record_failure(&self, source: &str, now: Instant) {
-        let mut map = self.map.lock().unwrap_or_else(|e| e.into_inner());
+        let mut map = self.map.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         if map.len() >= MAX_TRACKED_SOURCES {
             let (window, block_for) = (self.window, self.block_for);
             map.retain(|_, f| {

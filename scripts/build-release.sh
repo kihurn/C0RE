@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 VER=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
 
 echo "== dashboard"
-(cd web && npm ci --silent && npm test --silent && npm run check --silent && npm run build --silent)
+(cd web && npm ci --ignore-scripts --silent && npm test --silent && npm run check --silent && npm run build --silent)
 
 echo "== tests"
 cargo test -q

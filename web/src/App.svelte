@@ -138,7 +138,7 @@
   </main>
 
   <footer class="foot">
-    <span>c0re {__C0RE_VERSION__} // private gateway</span>
+    <span>c0re {__C0RE_VERSION__} // private ai gateway</span>
     <span class="blocks" aria-hidden="true">░▒▓█▓▒░</span>
     <span>{host}:{location.port || '80'}</span>
   </footer>

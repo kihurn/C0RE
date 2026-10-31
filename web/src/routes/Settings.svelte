@@ -8,6 +8,8 @@
   let pub = $state<PublicState | null>(null)
   let pubBusy = $state(false)
   let pubError = $state('')
+  // Tailscale's approval link, pulled out of the error so it can be clicked.
+  let approveLink = $derived(/https:\/\/login\.tailscale\.com\/\S+/.exec(pubError)?.[0] ?? null)
   let settings = $state<Settings | null>(null)
   let saved = $state('')
   let saveError = $state('')
@@ -85,7 +87,15 @@
     {:else if pub}
       <p class="muted">Off. Nothing outside your Tailscale network can reach C0RE.</p>
     {/if}
-    {#if pubError}<p class="message error" role="alert">{pubError}</p>{/if}
+    {#if pubBusy}<p class="muted" role="status">Asking Tailscale… this can take up to 20 seconds.</p>{/if}
+    {#if approveLink}
+      <div class="message approve" role="alert">
+        <p>Tailscale needs you to approve the public address for this PC. Open the link, sign in and approve, then turn the switch on again.</p>
+        <a class="btn primary" href={approveLink} target="_blank" rel="noopener noreferrer">approve in tailscale</a>
+      </div>
+    {:else if pubError}
+      <p class="message error" role="alert">{pubError}</p>
+    {/if}
   </section>
 
   {#if settings}
@@ -125,6 +135,14 @@
 </div>
 
 <style>
+  .approve {
+    display: grid;
+    gap: 14px;
+    justify-items: start;
+  }
+  .approve a {
+    text-decoration: none;
+  }
   .grow {
     flex: 1;
     min-width: 220px;

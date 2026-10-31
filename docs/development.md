@@ -10,8 +10,8 @@ file and the browser updates within a second. Nothing on the PC changes.
 Once (needs Node.js 22+, `brew install node`):
 
 ```bash
-cd .\web\
-npm install
+cd c0re/web
+npm ci --ignore-scripts
 ```
 
 Each time:
@@ -33,7 +33,7 @@ Needs Rust on the PC once: install from <https://rustup.rs>, then open a new Pow
 ```powershell
 Stop-ScheduledTask -TaskName C0RE        # free port 7080
 cd path\to\c0re
-cd web; npm install; npm run build; cd ..  # the .exe embeds the built dashboard
+cd web; npm ci --ignore-scripts; npm run build; cd ..  # the .exe embeds the built dashboard
 cargo run --release -- serve              # Ctrl+C to stop
 ```
 

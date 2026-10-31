@@ -40,14 +40,14 @@ fn token() -> Result<String> {
 
 impl AdminState {
     pub fn set_session_ttl(&self, ttl: Duration) {
-        *self.ttl.write().unwrap_or_else(|e| e.into_inner()) = ttl;
+        *self.ttl.write().unwrap_or_else(std::sync::PoisonError::into_inner) = ttl;
     }
 
     /// Returns (session id, csrf token).
     pub fn create_session(&self, generation: i64) -> Result<(String, String)> {
         let (id, csrf) = (token()?, token()?);
-        let ttl = *self.ttl.read().unwrap_or_else(|e| e.into_inner());
-        let mut s = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let ttl = *self.ttl.read().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut s = self.sessions.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let now = Instant::now();
         s.retain(|_, v| v.expires > now);
         s.insert(id.clone(), Session { csrf: csrf.clone(), expires: now + ttl, generation });
@@ -56,7 +56,7 @@ impl AdminState {
 
     /// Checks the session and, for state-changing requests, its CSRF token.
     pub fn check(&self, id: &str, csrf: Option<&str>, generation: i64) -> SessionCheck {
-        let mut s = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = self.sessions.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         match s.get(id) {
             Some(sess) if sess.expires > Instant::now() && sess.generation == generation => match csrf {
                 None => SessionCheck::Ok,
@@ -73,16 +73,16 @@ impl AdminState {
 
     /// The CSRF token of a live session (lets the dashboard recover it after a reload).
     pub fn csrf_for(&self, id: &str, generation: i64) -> Option<String> {
-        let s = self.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let s = self.sessions.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         s.get(id).filter(|v| v.expires > Instant::now() && v.generation == generation).map(|v| v.csrf.clone())
     }
 
     pub fn end_session(&self, id: &str) {
-        self.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(id);
+        self.sessions.lock().unwrap_or_else(std::sync::PoisonError::into_inner).remove(id);
     }
 
     pub fn end_all_sessions(&self) {
-        self.sessions.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        self.sessions.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clear();
     }
 }
 
@@ -101,7 +101,7 @@ pub fn set_password(state: &AppState, password: &str) -> Result<()> {
         .hash_password(password.as_bytes())
         .map_err(|e| anyhow!("could not hash password: {e}"))?
         .to_string();
-    let mut c = state.conn.lock().unwrap_or_else(|e| e.into_inner());
+    let mut c = state.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let tx = c.transaction()?;
     tx.execute(
         "INSERT INTO settings (k, v) VALUES (?1, ?2) ON CONFLICT(k) DO UPDATE SET v = excluded.v",
@@ -124,7 +124,7 @@ pub fn password_generation(state: &AppState) -> Result<i64> {
     let v: Option<String> = state
         .conn
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .query_row("SELECT v FROM settings WHERE k = ?1", [GENERATION_KEY], |r| r.get(0))
         .optional()?;
     Ok(v.and_then(|s| s.parse().ok()).unwrap_or(0))
@@ -138,7 +138,7 @@ fn stored_hash(state: &AppState) -> Result<Option<String>> {
     Ok(state
         .conn
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .query_row("SELECT v FROM settings WHERE k = ?1", [PASSWORD_KEY], |r| r.get(0))
         .optional()?)
 }

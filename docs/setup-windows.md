@@ -1,6 +1,6 @@
 # Setting up C0RE on your Windows PC
 
-C0RE sits in front of Ollama on your PC. Projects reach Ollama through C0RE with their own
+C0RE sits in front of Ollama on your PC. Projects reach your AI through C0RE with their own
 key, from your Tailscale devices (private) or, if you choose, from the internet (public).
 
 **Before you start:** Ollama is installed and running, with `OLLAMA_HOST` unset (or

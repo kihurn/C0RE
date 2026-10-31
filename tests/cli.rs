@@ -109,7 +109,7 @@ fn set_password_from_stdin() {
     let d = tempfile::tempdir().unwrap();
     let (code, out) = run_input(d.path(), &["admin", "set-password", "--stdin"], "a long enough password\n");
     assert_eq!(code, 0, "{out}");
-    let state = c0re::AppState::open(d.path(), std::sync::Arc::new(c0re::tailscale::SystemRunner { bin: "x".into() })).unwrap();
+    let state = c0re::AppState::open(d.path(), std::sync::Arc::new(c0re::tailscale::SystemRunner::new("x"))).unwrap();
     assert!(c0re::admin::auth::verify_password(&state, "a long enough password").unwrap());
     let (code, _) = run_input(d.path(), &["admin", "set-password", "--stdin"], "short\n");
     assert_ne!(code, 0);

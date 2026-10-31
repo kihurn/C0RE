@@ -62,14 +62,14 @@ impl GpuMonitor {
     /// Current readings, or None when there's no NVIDIA GPU or driver tool. Gives up after
     /// three seconds so a stuck driver can't hold up the dashboard.
     pub async fn read(&self) -> Option<GpuStats> {
-        if let Some((at, v)) = self.last.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        if let Some((at, v)) = self.last.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
             && at.elapsed() < CACHE_FOR
         {
             return v;
         }
         let read = tokio::task::spawn_blocking(|| run_nvidia_smi().and_then(|o| parse_nvidia_smi(&o)));
         let v = tokio::time::timeout(Duration::from_secs(3), read).await.ok().and_then(Result::ok).flatten();
-        *self.last.lock().unwrap_or_else(|e| e.into_inner()) = Some((Instant::now(), v.clone()));
+        *self.last.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some((Instant::now(), v.clone()));
         v
     }
 }

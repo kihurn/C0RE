@@ -10,7 +10,43 @@ use std::time::Duration;
 const STATUS_ON: &str = r#"{"TCP":{"8443":{"HTTPS":true}},"Web":{"kihurn-desktop.tail1234.ts.net:8443":{"Handlers":{"/":{"Proxy":"http://127.0.0.1:7071"}}}},"AllowFunnel":{"kihurn-desktop.tail1234.ts.net:8443":true}}"#;
 
 fn err_out(stderr: &str) -> std::io::Result<CmdOutput> {
-    Ok(CmdOutput { status: 1, stdout: String::new(), stderr: stderr.into() })
+    Ok(CmdOutput { status: 1, stderr: stderr.into(), ..Default::default() })
+}
+
+const NEEDS_APPROVAL: &str = "Funnel is not enabled on your tailnet.\nTo enable, visit:\n\n         https://login.tailscale.com/f/funnel?node=nAbC123\n";
+
+#[test]
+fn funnel_on_shows_the_approval_link_when_tailscale_waits_for_it() {
+    // Tailscale prints the link and waits; C0RE gives up waiting and passes the link on.
+    let r = FakeRunner::new(|_| Ok(CmdOutput { status: -1, stdout: NEEDS_APPROVAL.into(), timed_out: true, ..Default::default() }));
+    let e = funnel_on(r.as_ref(), 7071, 8443).unwrap_err().to_string();
+    assert!(e.contains("https://login.tailscale.com/f/funnel?node=nAbC123"), "{e}");
+    assert!(e.contains("approve"), "{e}");
+}
+
+#[test]
+fn approval_link_is_never_taken_for_the_public_address() {
+    let r = FakeRunner::new(|_| FakeRunner::ok(NEEDS_APPROVAL));
+    let e = funnel_on(r.as_ref(), 7071, 8443).unwrap_err().to_string();
+    assert!(e.contains("login.tailscale.com"), "{e}");
+}
+
+#[test]
+fn funnel_on_explains_a_hang_with_no_link() {
+    let r = FakeRunner::new(|_| Ok(CmdOutput { status: -1, timed_out: true, ..Default::default() }));
+    let e = funnel_on(r.as_ref(), 7071, 8443).unwrap_err().to_string();
+    assert!(e.contains("tailscale funnel --bg --https=8443 http://127.0.0.1:7071"), "{e}");
+}
+
+#[cfg(unix)]
+#[test]
+fn system_runner_gives_up_on_a_command_that_never_finishes() {
+    let r = SystemRunner { bin: "sh".into(), timeout: Duration::from_millis(800) };
+    let started = std::time::Instant::now();
+    let out = r.run(&["-c", "echo waiting-for-you; sleep 30"]).unwrap();
+    assert!(started.elapsed() < Duration::from_secs(5), "took {:?}", started.elapsed());
+    assert!(out.timed_out);
+    assert!(out.stdout.contains("waiting-for-you"), "{:?}", out.stdout);
 }
 
 #[test]

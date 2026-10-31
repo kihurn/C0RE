@@ -100,7 +100,7 @@ impl UsageStore {
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().unwrap_or_else(|e| e.into_inner())
+        self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     pub fn insert(&self, r: &UsageRecord) -> Result<()> {

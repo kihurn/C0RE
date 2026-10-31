@@ -171,7 +171,7 @@ async fn overview(State(s): St, _a: Authed) -> Response {
                 "name": m.get("name").cloned().unwrap_or(Value::Null),
                 "size": size,
                 "size_vram": vram,
-                "gpu_percent": if size > 0 { (vram * 100 / size).min(100) } else { 0 },
+                "gpu_percent": vram.saturating_mul(100).checked_div(size).map_or(0, |p| p.min(100)),
                 "context": m.get("context_length").cloned().unwrap_or(Value::Null),
             })
         })
@@ -260,7 +260,7 @@ async fn usage(State(s): St, _a: Authed, Query(q): Query<UsageQuery>) -> Respons
 
 async fn models(State(s): St, _a: Authed) -> Response {
     let Some(tags) = engine_get(&s, "/api/tags").await else {
-        return err(503, "engine_offline", "The engine is not running on the PC.");
+        return err(503, "engine_offline", "The AI engine is not running on the PC.");
     };
     let loaded: Vec<String> = engine_get(&s, "/api/ps")
         .await
@@ -336,7 +336,7 @@ async fn put_settings(State(s): St, _a: Authed, Json(b): Json<SettingsBody>) -> 
     if let Err(e) = c.save(&s.dir) {
         return internal(e);
     }
-    *s.cfg.write().unwrap_or_else(|e| e.into_inner()) = c;
+    *s.cfg.write().unwrap_or_else(std::sync::PoisonError::into_inner) = c;
     Json(b).into_response()
 }
 

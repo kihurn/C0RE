@@ -149,7 +149,7 @@
   {:else if keys.length === 0}
     <section class="panel empty">
       <p>No keys yet.</p>
-      <p class="muted">Create one for each project that should connect, starting with Lenz.</p>
+      <p class="muted">Create one for each project that should use your AI, starting with Lenz.</p>
       <button class="btn primary" type="button" onclick={openCreate}>Create your first key</button>
     </section>
   {:else}

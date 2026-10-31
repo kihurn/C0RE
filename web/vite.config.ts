@@ -4,7 +4,9 @@ import { defineConfig } from 'vite'
 
 // `npm run dev` serves the dashboard at http://localhost:5173/admin/ with live reload and
 // sends its API calls to a running C0RE (your PC by default; set C0RE_URL to change it).
-const c0re = process.env.C0RE_URL ?? 'http://kihurn-desktop:7080'
+// Plain http is deliberate: C0RE's private address has no TLS of its own, and the traffic
+// travels inside Tailscale's encrypted WireGuard tunnel. Development only; not shipped.
+const c0re = process.env.C0RE_URL ?? 'http://kihurn-desktop:7080' // NOSONAR
 // The version shown in the dashboard comes from Cargo.toml, so the two never disagree.
 const version = /^version = "([^"]+)"/m.exec(readFileSync(new URL('../Cargo.toml', import.meta.url), 'utf8'))?.[1] ?? 'dev'
 

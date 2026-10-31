@@ -1,14 +1,30 @@
 // Dashboard screenshots against sample API data (no server needed).
 // Usage: PW=<path to playwright> node scripts/screens.mjs <out-dir>
+import { randomBytes } from 'node:crypto'
 import { readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { join, extname } from 'node:path'
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { chromium } = require(process.env.PW ?? 'playwright')
-const dist = new URL('../web/dist/', import.meta.url).pathname
-const out = process.argv[2] ?? 'screens'
+const root = fileURLToPath(new URL('..', import.meta.url))
+const dist = resolve(root, 'web/dist')
+
+// Only ever reads and writes inside the project.
+const inside = (base, p) => {
+  const rel = relative(base, p)
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
+}
+const out = resolve(root, process.argv[2] ?? 'screens')
+if (!inside(root, out)) {
+  console.error(`The output folder must be inside the project (${root}).`)
+  process.exit(1)
+}
 mkdirSync(out, { recursive: true })
+
+// Made-up keys for the pictures, generated fresh each run so none is ever stored here.
+const fakeKey = () => 'c0re_' + randomBytes(48).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 43)
 
 const now = Math.floor(Date.now() / 1000)
 const hour = Math.floor(now / 3600) * 3600
@@ -41,7 +57,6 @@ const api = {
 }
 const types = { '.woff2': 'font/woff2', '.woff': 'font/woff', '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml' }
 
-const browser = await chromium.launch()
 const shots = [
   ['overview', '/admin/'],
   ['keys', '/admin/keys'],
@@ -51,45 +66,49 @@ const shots = [
   ['secret', '/admin/keys'],
   ['reveal', '/admin/keys']
 ]
-for (const scheme of ['dark']) {
-  for (const [w, h, tag] of [[1180, 820, 'desktop'], [390, 844, 'phone']]) {
-    const page = await browser.newPage({ viewport: { width: w, height: h }, colorScheme: scheme, deviceScaleFactor: 2 })
-    await page.route('**/admin/**', async (route) => {
-      const url = new URL(route.request().url())
-      if (url.pathname.startsWith('/admin/api/')) {
-        const name = url.pathname.slice('/admin/api/'.length).split('/')[0]
-        if (name === 'keys' && route.request().method() === 'POST') {
-          return route.fulfill({ json: { key: { ...keys[0], id: 'k_new123', project: 'lenz-laptop' }, secret: 'c0re_7XkQ2mPz9LrT4vBn8WcYd3HsJf6GaKe5NuQ1oVxZt0R' } })
-        }
-        if (url.pathname.endsWith('/reveal')) return route.fulfill({ json: { secret: 'c0re_4fT9xQ2mLp7RkW3zBn8VcYd1HsJe6GaKu5NoQ0iUxZy' } })
-        return route.fulfill({ json: api[name] ?? {} })
-      }
-      let file = url.pathname.slice('/admin/'.length)
-      if (!file || !existsSync(join(dist, file))) file = 'index.html'
-      return route.fulfill({ body: readFileSync(join(dist, file)), contentType: types[extname(file)] ?? 'application/octet-stream' })
-    })
-    for (const [name, path] of shots) {
-      if (tag === 'phone' && !['overview', 'keys', 'reveal'].includes(name)) continue
-      await page.goto(`http://c0re.test${path}`)
-      await page.waitForTimeout(2000)
-      if (name === 'secret') {
-        await page.getByRole('button', { name: 'New key' }).click()
-        await page.getByLabel('Project name').fill('lenz-laptop')
-        await page.getByRole('button', { name: 'Create key' }).click()
-        await page.waitForTimeout(200)
-      }
-      if (name === 'settings') {
-        await page.getByRole('button', { name: 'Save settings' }).hover()
-        await page.waitForTimeout(150)
-      }
-      if (name === 'reveal') {
-        await page.getByRole('button', { name: "Show lenz's key" }).click()
-        await page.waitForTimeout(200)
-      }
-      await page.screenshot({ path: join(out, `${name}-${tag}-${scheme}.png`), fullPage: name !== 'secret' })
+const sizes = [[1180, 820, 'desktop'], [390, 844, 'phone']]
+const phoneShots = ['overview', 'keys', 'reveal']
+
+// Serves the built dashboard and the sample API to one page.
+async function serve(route) {
+  const url = new URL(route.request().url())
+  if (url.pathname.startsWith('/admin/api/')) {
+    const name = url.pathname.slice('/admin/api/'.length).split('/')[0]
+    if (name === 'keys' && route.request().method() === 'POST') {
+      return route.fulfill({ json: { key: { ...keys[0], id: 'k_new123', project: 'lenz-laptop' }, secret: fakeKey() } })
     }
-    await page.close()
+    if (url.pathname.endsWith('/reveal')) return route.fulfill({ json: { secret: fakeKey() } })
+    return route.fulfill({ json: api[name] ?? {} })
   }
+  let file = resolve(dist, url.pathname.slice('/admin/'.length))
+  if (!inside(dist, file) || !existsSync(file) || file === dist) file = join(dist, 'index.html')
+  return route.fulfill({ body: readFileSync(file), contentType: types[extname(file)] ?? 'application/octet-stream' })
 }
+
+// One screenshot, in its own page, so they can all run at once.
+async function shoot(browser, [name, path], [w, h, tag]) {
+  const page = await browser.newPage({ viewport: { width: w, height: h }, colorScheme: 'dark', deviceScaleFactor: 2 })
+  await page.route('**/admin/**', serve)
+  await page.goto(`http://c0re.test${path}`)
+  await page.waitForTimeout(2000)
+  if (name === 'secret') {
+    await page.getByRole('button', { name: 'New key' }).click()
+    await page.getByLabel('Project name').fill('lenz-laptop')
+    await page.getByRole('button', { name: 'Create key' }).click()
+    await page.waitForTimeout(200)
+  } else if (name === 'settings') {
+    await page.getByRole('button', { name: 'Save settings' }).hover()
+    await page.waitForTimeout(150)
+  } else if (name === 'reveal') {
+    await page.getByRole('button', { name: "Show lenz's key" }).click()
+    await page.waitForTimeout(200)
+  }
+  await page.screenshot({ path: join(out, `${name}-${tag}-dark.png`), fullPage: name !== 'secret' })
+  await page.close()
+}
+
+const browser = await chromium.launch()
+const jobs = sizes.flatMap((size) => shots.filter(([name]) => size[2] === 'desktop' || phoneShots.includes(name)).map((shot) => [shot, size]))
+await Promise.all(jobs.map(([shot, size]) => shoot(browser, shot, size)))
 await browser.close()
 console.log('screenshots in', out)

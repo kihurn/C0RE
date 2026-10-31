@@ -176,7 +176,7 @@ impl KeyStore {
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().unwrap_or_else(|e| e.into_inner())
+        self.conn.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Creates a key and returns it with its secret. The secret itself is stored only

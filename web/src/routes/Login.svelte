@@ -23,7 +23,7 @@
     <h1><Core size={84} /></h1>
     <ol class="boot" aria-hidden="true">
       <li>&gt; connect {location.host} ....... <b>OK</b></li>
-      <li>&gt; private gateway ............ <b>OK</b></li>
+      <li>&gt; private ai gateway ......... <b>OK</b></li>
       <li>&gt; {passwordSet ? 'auth required.' : 'no admin password set.'}</li>
     </ol>
     {#if passwordSet}

@@ -1,4 +1,4 @@
-//! C0RE: a private gateway in front of a local Ollama.
+//! C0RE: a private AI gateway in front of a local Ollama.
 
 pub mod admin;
 pub mod cli;
@@ -67,7 +67,7 @@ impl AppState {
     }
 
     pub fn config(&self) -> config::Config {
-        self.cfg.read().unwrap_or_else(|e| e.into_inner()).clone()
+        self.cfg.read().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
     }
 }
 

@@ -48,8 +48,7 @@ fn invalid_toml_is_an_error() {
 #[test]
 fn save_round_trips() {
     let dir = tempfile::tempdir().unwrap();
-    let mut c = Config::default();
-    c.retention_days = 30;
+    let c = Config { retention_days: 30, ..Default::default() };
     c.save(dir.path()).unwrap();
     assert_eq!(Config::load_or_create(dir.path()).unwrap().retention_days, 30);
 }

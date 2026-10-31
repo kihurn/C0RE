@@ -32,8 +32,7 @@ fn firewall_rule_limited_to_tailscale_range_and_7080() {
 
 #[test]
 fn uses_configured_private_port() {
-    let mut c = Config::default();
-    c.private_port = 9123;
+    let c = Config { private_port: 9123, ..Default::default() };
     assert!(install_script(Path::new(r"C:\c0re-svc.exe"), &c).contains("-LocalPort 9123"));
 }
 
