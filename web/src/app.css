@@ -187,8 +187,11 @@ label.field,
   content: ' ]';
 }
 
-.btn:hover {
-  background: var(--surface-2);
+/* Hover inverts: outlined turns white, white turns red, red fills. */
+.btn:hover:not(:disabled) {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--bg);
 }
 
 .btn:active:not(:disabled) {
@@ -207,8 +210,11 @@ label.field,
   color: var(--bg);
 }
 
-.btn.primary:hover {
-  background: #d9d9d9;
+.btn.primary:hover:not(:disabled),
+.btn.danger:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--white);
 }
 
 .btn.danger {
@@ -230,6 +236,10 @@ label.field,
   content: none;
 }
 
+.btn.icon:hover:not(:disabled) {
+  border-color: var(--white);
+}
+
 .link {
   background: none;
   border: 0;
@@ -238,6 +248,10 @@ label.field,
   cursor: pointer;
   text-decoration: underline dotted;
   text-underline-offset: 4px;
+}
+
+.link:hover {
+  color: var(--red);
 }
 
 /* Status tags: [ PRIVATE ]. Always a word; colour only adds to it. */
@@ -288,6 +302,10 @@ td {
   padding: 11px 12px;
   border-bottom: 1px dashed var(--line);
   vertical-align: middle;
+}
+
+tbody tr:hover td {
+  background: var(--surface-2);
 }
 
 tr:last-child td {
@@ -382,6 +400,10 @@ input[type='checkbox']:checked::after {
   border-left: 1px solid var(--line-strong);
 }
 
+.segmented button:hover {
+  color: var(--white);
+}
+
 .segmented button[aria-checked='true'] {
   background: var(--white);
   color: var(--bg);
@@ -408,6 +430,10 @@ input[type='checkbox']:checked::after {
   height: 16px;
   background: var(--text-3);
   transition: transform 0.12s;
+}
+
+.toggle:hover:not(:disabled) {
+  border-color: var(--white);
 }
 
 .toggle[aria-checked='true'] {

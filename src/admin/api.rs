@@ -159,8 +159,7 @@ fn today_start() -> i64 {
 }
 
 async fn overview(State(s): St, _a: Authed) -> Response {
-    let version = engine_get(&s, "/api/version").await;
-    let ps = engine_get(&s, "/api/ps").await;
+    let (version, ps, gpu) = tokio::join!(engine_get(&s, "/api/version"), engine_get(&s, "/api/ps"), s.gpu.read());
     let loaded: Vec<Value> = ps
         .and_then(|v| v.get("models").and_then(Value::as_array).cloned())
         .unwrap_or_default()
@@ -194,6 +193,7 @@ async fn overview(State(s): St, _a: Authed) -> Response {
             "entrances": s.usage.by_entrance(today_start()).unwrap_or_default(),
             "recent": recent,
             "keys": s.keys.list().map(|k| k.len()).unwrap_or(0),
+            "gpu": gpu,
         }))
         .into_response(),
         (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => internal(e),

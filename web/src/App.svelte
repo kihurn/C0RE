@@ -29,6 +29,7 @@
   let page = $state<Page>(fromPath())
   let engineOnline = $state<boolean | null>(null)
   let loaded = $state<LoadedModel[]>([])
+  let gpuLoad = $state<number | null>(null)
   let pub = $state<PublicState | null>(null)
   let loadError = $state('')
 
@@ -50,12 +51,13 @@
     document.getElementById('content')?.focus()
   }
 
-  // The system bar and the brand's 0 stay current on every page.
+  // The system bar stays current on every page.
   async function pollStatus() {
     const [o, p] = await Promise.all([api.overview(), api.publicState()])
     if (o.ok) {
       engineOnline = o.data.engine.online
       loaded = o.data.engine.loaded
+      gpuLoad = o.data.gpu?.util_percent ?? null
     }
     if (p.ok) pub = p.data
   }
@@ -96,7 +98,8 @@
     <span class="signal" class:on={engineOnline === true} class:down={engineOnline === false}>
       <span class="led" aria-hidden="true"></span>
       {engineOnline === null ? 'checking engine' : engineOnline ? 'engine online' : 'engine offline'}
-      {#if model}<span class="sys-gpu" class:spill={model.gpu_percent < 100}>:: {model.gpu_percent}% gpu</span>{/if}
+      {#if engineOnline && gpuLoad != null}<span class="sys-gpu" class:spill={!!model && model.gpu_percent < 100}>:: gpu load {gpuLoad}%</span>
+      {:else if model}<span class="sys-gpu" class:spill={model.gpu_percent < 100}>:: {model.gpu_percent}% on gpu</span>{/if}
     </span>
     <span class="sys-right" class:pub-on={pub?.state === 'on'}>public_address :: {pub?.state === 'on' ? 'on' : 'off'}</span>
   </header>
@@ -104,7 +107,7 @@
   <nav class="nav" aria-label="Sections">
     <div class="nav-inner">
       <a class="prompt" href="/admin/" onclick={(e) => go('overview', e)} aria-label="C0RE overview">
-        <Core online={engineOnline} size={26} />
+        <Core size={26} />
         <span class="path" aria-hidden="true">~$<span class="cursor"></span></span>
       </a>
       <ul>
@@ -255,7 +258,7 @@
   ul a:hover,
   .logout:hover {
     color: var(--white);
-    border-color: var(--line);
+    border-color: var(--white);
   }
   ul a[aria-current='page'] {
     background: var(--white);

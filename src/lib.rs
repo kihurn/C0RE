@@ -4,6 +4,7 @@ pub mod admin;
 pub mod cli;
 pub mod config;
 pub mod db;
+pub mod gpu;
 pub mod install;
 pub mod keys;
 pub mod limits;
@@ -30,6 +31,7 @@ pub struct AppState {
     pub failures: limits::FailureBlocker,
     pub http: reqwest::Client,
     pub admin: admin::AdminState,
+    pub gpu: gpu::GpuMonitor,
     pub tailscale: Arc<dyn tailscale::Runner>,
 }
 
@@ -59,6 +61,7 @@ impl AppState {
             failures: limits::FailureBlocker::new(10, Duration::from_secs(60), Duration::from_secs(60)),
             http: reqwest::Client::builder().connect_timeout(Duration::from_secs(3)).build()?,
             admin: admin::AdminState::default(),
+            gpu: gpu::GpuMonitor::default(),
             tailscale,
         }))
     }

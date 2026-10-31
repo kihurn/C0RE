@@ -3,6 +3,8 @@
   import { api, type Key, type Limits, type Model, type Reach, type Settings } from '../lib/api'
   import ReachControl from '../lib/ReachControl.svelte'
   import SecretCell from '../lib/SecretCell.svelte'
+  import Slider from '../lib/Slider.svelte'
+  import { limitSliders } from '../lib/limits'
   import { formatCount, relativeTime } from '../lib/format'
 
   let { unauthorized }: { unauthorized: () => void } = $props()
@@ -241,12 +243,10 @@
       </fieldset>
       <fieldset>
         <legend>Limits</legend>
-        <div class="grid-2">
-          <label class="field">Requests per minute<input type="number" min="1" bind:value={limits.rate_per_min} required /></label>
-          <label class="field">Requests per day<input type="number" min="1" bind:value={limits.daily_cap} required /></label>
-          <label class="field">At the same time<input type="number" min="1" max="16" bind:value={limits.max_concurrent} required /></label>
-          <label class="field">Max context (tokens)<input type="number" min="512" step="512" bind:value={limits.max_ctx} required /></label>
-          <label class="field">Max request size (MB)<input type="number" min="1" max="100" bind:value={limits.max_body_mb} required /></label>
+        <div class="sliders">
+          {#each limitSliders as f (f.key)}
+            <Slider label={f.label} unit={f.unit} min={f.min} max={f.max} stops={f.stops} bind:value={limits[f.key]} />
+          {/each}
         </div>
       </fieldset>
       <label class="field">Note (optional)<input type="text" bind:value={note} maxlength="200" /></label>
@@ -342,6 +342,11 @@
     font-size: 12px;
     color: var(--text-2);
     margin-bottom: 4px;
+  }
+  .sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px 28px;
   }
   .check {
     display: flex;

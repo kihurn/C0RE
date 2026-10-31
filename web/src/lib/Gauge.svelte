@@ -1,10 +1,15 @@
 <script lang="ts">
-  // The engine as a pixel ring: each lit cell is a share of the loaded model. White cells
-  // sit on the GPU; red cells spilled onto the CPU (slow). Dim when idle, sparse red when
-  // the engine is offline. Lights up cell by cell once, when the page opens.
+  // The engine as a pixel ring filled to `percent` (live GPU load). Lit cells turn red when
+  // `alarm` is set (part of a model spilled onto the CPU). Unlit cells stay dim; sparse red
+  // when the engine is offline. Cells change one after another, so each update sweeps round.
   import { onMount } from 'svelte'
 
-  let { online, percent, size = 220 }: { online: boolean; percent: number | null; size?: number } = $props()
+  let {
+    online,
+    percent,
+    alarm = false,
+    size = 220
+  }: { online: boolean; percent: number | null; alarm?: boolean; size?: number } = $props()
 
   const N = 23
   const C = (N - 1) / 2
@@ -29,8 +34,8 @@
   function cellClass(i: number): string {
     if (!ready) return 'dim'
     if (!online) return i % 7 === 0 ? 'fault' : 'dim'
-    if (percent == null) return 'dim'
-    return i < lit ? 'gpu' : 'cpu'
+    if (percent == null || i >= lit) return 'dim'
+    return alarm ? 'alarm' : 'lit'
   }
 </script>
 
@@ -51,10 +56,10 @@
   .dim {
     fill: var(--line);
   }
-  .gpu {
+  .lit {
     fill: var(--text);
   }
-  .cpu {
+  .alarm {
     fill: var(--red);
   }
   .fault {

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { api, type PublicState, type Settings } from '../lib/api'
+  import Slider from '../lib/Slider.svelte'
+  import { dbSizeStops, limitSliders, retentionStops } from '../lib/limits'
 
   let { unauthorized }: { unauthorized: () => void } = $props()
   let pub = $state<PublicState | null>(null)
@@ -55,13 +57,6 @@
     } else pwError = r.message
   }
 
-  const fields = [
-    ['rate_per_min', 'Per minute'],
-    ['daily_cap', 'Per day'],
-    ['max_concurrent', 'At once'],
-    ['max_ctx', 'Max context'],
-    ['max_body_mb', 'Max MB']
-  ] as const
 </script>
 
 <div class="stack">
@@ -99,17 +94,17 @@
       {#each [['private_defaults', 'Private keys'], ['public_defaults', 'Public keys']] as const as [group, title] (group)}
         <fieldset>
           <legend>{title}</legend>
-          <div class="grid-2">
-            {#each fields as [f, label] (f)}
-              <label class="field">{label}<input type="number" min="1" bind:value={settings[group][f]} required /></label>
+          <div class="sliders">
+            {#each limitSliders as f (f.key)}
+              <Slider label={f.label} unit={f.unit} min={f.min} max={f.max} stops={f.stops} bind:value={settings[group][f.key]} />
             {/each}
           </div>
         </fieldset>
       {/each}
       <h2>Usage history</h2>
-      <div class="grid-2">
-        <label class="field">Keep for (days)<input type="number" min="1" max="365" bind:value={settings.retention_days} required /></label>
-        <label class="field">Max size (MB)<input type="number" min="10" max="10000" bind:value={settings.max_db_mb} required /></label>
+      <div class="sliders">
+        <Slider label="Keep for" unit="days" stops={retentionStops} bind:value={settings.retention_days} />
+        <Slider label="Max size" unit="MB" stops={dbSizeStops} bind:value={settings.max_db_mb} />
       </div>
       {#if saved}<p class="message" role="status">{saved}</p>{/if}
       {#if saveError}<p class="message error" role="alert">{saveError}</p>{/if}
@@ -140,8 +135,11 @@
     padding: 0;
   }
   legend {
-    font-size: 12px;
-    color: var(--text-2);
-    margin-bottom: 6px;
+    margin-bottom: 12px;
+  }
+  .sliders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 22px 32px;
   }
 </style>

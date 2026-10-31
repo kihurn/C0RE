@@ -69,6 +69,16 @@ export interface LoadedModel {
   context: number | null
 }
 
+/** Live readings from nvidia-smi on the PC; null where it isn't available. */
+export interface GpuStats {
+  name: string
+  util_percent: number | null
+  mem_used_mb: number | null
+  mem_total_mb: number | null
+  temp_c: number | null
+  power_w: number | null
+}
+
 export interface Overview {
   engine: { online: boolean; version: string | null; loaded: LoadedModel[] }
   today: { requests: number; blocked: number; projects: number }
@@ -76,6 +86,7 @@ export interface Overview {
   recent: UsageRecord[]
   keys: number
   entrances: { private: { requests: number; blocked: number }; public: { requests: number; blocked: number } }
+  gpu: GpuStats | null
 }
 
 export interface Model {

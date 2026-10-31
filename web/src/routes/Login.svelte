@@ -20,7 +20,7 @@
 
 <main class="login">
   <form class="panel" data-tab="RESTRICTED_ACCESS" onsubmit={submit}>
-    <h1><Core online={true} size={84} /></h1>
+    <h1><Core size={84} /></h1>
     <ol class="boot" aria-hidden="true">
       <li>&gt; connect {location.host} ....... <b>OK</b></li>
       <li>&gt; private ai gateway ......... <b>OK</b></li>

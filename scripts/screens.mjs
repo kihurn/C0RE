@@ -26,7 +26,7 @@ const recent = [
 ]
 const api = {
   status: { password_set: true, logged_in: true, csrf: 'x' },
-  overview: { engine: { online: true, version: '0.40.13', loaded: [{ name: 'qwen3-vl:8b-instruct', size: 6100000000, size_vram: 6100000000, gpu_percent: 100, context: 8192 }] }, today: { requests: 142, blocked: 4, projects: 2 }, per_hour: perHour, recent, keys: 3, entrances: { private: { requests: 128, blocked: 1 }, public: { requests: 14, blocked: 3 } } },
+  overview: { engine: { online: true, version: '0.40.13', loaded: [{ name: 'qwen3-vl:8b-instruct', size: 6100000000, size_vram: 6100000000, gpu_percent: 100, context: 8192 }] }, today: { requests: 142, blocked: 4, projects: 2 }, per_hour: perHour, recent, keys: 3, entrances: { private: { requests: 128, blocked: 1 }, public: { requests: 14, blocked: 3 } }, gpu: { name: 'NVIDIA GeForce RTX 4070 SUPER', util_percent: 62, mem_used_mb: 7340, mem_total_mb: 12282, temp_c: 58, power_w: 164 } },
   keys,
   models: [
     { name: 'qwen3-vl:8b-instruct', size: 6100000000, loaded: true, vision: true, thinking: false, capabilities: ['completion', 'vision'] },
@@ -77,6 +77,10 @@ for (const scheme of ['dark']) {
         await page.getByLabel('Project name').fill('lenz-laptop')
         await page.getByRole('button', { name: 'Create key' }).click()
         await page.waitForTimeout(200)
+      }
+      if (name === 'settings') {
+        await page.getByRole('button', { name: 'Save settings' }).hover()
+        await page.waitForTimeout(150)
       }
       if (name === 'reveal') {
         await page.getByRole('button', { name: "Show lenz's key" }).click()

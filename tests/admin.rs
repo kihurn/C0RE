@@ -243,6 +243,8 @@ async fn overview_and_models_read_the_engine() {
     assert_eq!(v["engine"]["loaded"][0]["name"], "qwen3-vl:8b-instruct");
     assert_eq!(v["entrances"]["private"]["requests"], 0);
     assert_eq!(v["entrances"]["public"]["blocked"], 0);
+    // GPU readings: an object on a PC with nvidia-smi, null where there isn't one.
+    assert!(v["gpu"].is_null() || v["gpu"]["name"].is_string(), "{}", v["gpu"]);
     let v: Value = req(&a, &s, reqwest::Method::GET, "/models").send().await.unwrap().json().await.unwrap();
     let m = v.as_array().unwrap().iter().find(|m| m["name"] == "qwen3-vl:8b-instruct").unwrap();
     assert_eq!(m["loaded"], true);

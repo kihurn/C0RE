@@ -33,10 +33,10 @@
     if (p.ok) pub = p.data
   }
 
-  // The feed refreshes every 5 seconds while this page is open and visible.
+  // GPU readings and the feed refresh every 3 seconds while this page is open and visible.
   onMount(() => {
     load()
-    const t = setInterval(() => document.visibilityState === 'visible' && load(), 5_000)
+    const t = setInterval(() => document.visibilityState === 'visible' && load(), 3_000)
     return () => clearInterval(t)
   })
 
@@ -44,6 +44,10 @@
   const tokensOf = (r: { prompt_tokens: number | null; output_tokens: number | null }) =>
     r.prompt_tokens == null && r.output_tokens == null ? null : (r.prompt_tokens ?? 0) + (r.output_tokens ?? 0)
   let model = $derived(data?.engine.loaded[0] ?? null)
+  let gpu = $derived(data?.gpu ?? null)
+  let gpuLoad = $derived(data?.engine.online ? (gpu?.util_percent ?? null) : null)
+  const gb = (mb: number) => (mb / 1024).toFixed(1)
+  let vram = $derived(gpu?.mem_used_mb != null && gpu.mem_total_mb ? `${gb(gpu.mem_used_mb)} / ${gb(gpu.mem_total_mb)} GB` : '')
 
   // Boot-log lines: what C0RE checked, padded with dots to a status, like a startup screen.
   type Line = { label: string; status: string; bad?: boolean }
@@ -62,6 +66,7 @@
             : { label: 'gpu share', status: `WARN: ${model.gpu_percent}%, rest on cpu`, bad: true }
         )
     }
+    if (gpu) lines.push({ label: `gpu ${gpu.name.replace(/^NVIDIA (GeForce )?/i, '').toLowerCase()}`, status: gpu.temp_c != null ? `${gpu.temp_c}°C` : 'OK', bad: (gpu.temp_c ?? 0) >= 85 })
     lines.push({ label: 'public address', status: pub?.state === 'on' ? 'ON' : 'OFF' })
     lines.push({ label: 'keys issued', status: String(data.keys) })
     return lines
@@ -75,7 +80,8 @@
       { text: `${formatCount(data.today.requests)} req today`, kind: 'big' },
       { text: model ? model.name : 'no model loaded' },
       { text: '░▒▓█▓▒░', kind: 'blocks' },
-      { text: model ? `${model.gpu_percent}% gpu` : 'gpu idle', kind: model && model.gpu_percent < 100 ? 'red' : undefined },
+      { text: gpuLoad != null ? `gpu load ${gpuLoad}%` : model ? `${model.gpu_percent}% on gpu` : 'gpu idle', kind: model && model.gpu_percent < 100 ? 'red' : undefined },
+      ...(vram ? [{ text: `vram ${vram}` }] : []),
       { text: 'private / public / off', kind: 'ghost' },
       { text: `${formatCount(data.today.blocked)} blocked`, kind: data.today.blocked ? 'red' : undefined },
       { text: `${formatCount(data.today.projects)} projects`, kind: 'big' },
@@ -121,6 +127,7 @@
           <div><dt>memory</dt><dd>{formatBytes(model.size)}</dd></div>
           <div><dt>on gpu</dt><dd>{formatBytes(model.size_vram)}</dd></div>
           {#if model.context}<div><dt>context</dt><dd>{formatCount(model.context)}</dd></div>{/if}
+          {#if vram}<div><dt>vram in use</dt><dd>{vram}</dd></div>{/if}
         </dl>
         {#if model.gpu_percent < 100}
           <p class="lede bad">Part of this model is running on the CPU, so answers are slower. Close GPU-heavy apps or lower the context.</p>
@@ -133,10 +140,13 @@
       {/if}
     </div>
     <div class="gauge">
-      <Gauge online={data.engine.online} percent={model?.gpu_percent ?? null} />
+      <Gauge online={data.engine.online} percent={gpuLoad ?? model?.gpu_percent ?? null} alarm={!!model && model.gpu_percent < 100} />
       <div class="readout">
         {#if !data.engine.online}
           <span class="big bad">ERR</span><span class="cap">engine offline</span>
+        {:else if gpuLoad != null}
+          <span class="big">{gpuLoad}%</span><span class="cap">gpu load</span>
+          {#if gpu?.temp_c != null}<span class="sub">{gpu.temp_c}°C{#if gpu.power_w != null}&nbsp; {gpu.power_w} W{/if}</span>{/if}
         {:else if model}
           <span class="big">{model.gpu_percent}%</span><span class="cap">on gpu</span>
         {:else}
@@ -352,6 +362,11 @@
   .big.bad {
     color: var(--red);
   }
+  .sub {
+    margin-top: 6px;
+    font: 400 17px/1 var(--term);
+    color: var(--text-2);
+  }
   .cap {
     font-size: 10px;
     letter-spacing: 0.2em;
@@ -392,8 +407,7 @@
     white-space: nowrap;
   }
   .cmd:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
+    color: var(--red);
   }
   .stats {
     display: grid;

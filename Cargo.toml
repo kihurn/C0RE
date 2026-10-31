@@ -5,6 +5,7 @@ edition = "2024"
 description = "Private AI gateway in front of a local Ollama"
 license = "UNLICENSED"
 publish = false
+default-run = "c0re"
 
 [lib]
 path = "src/lib.rs"
