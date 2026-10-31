@@ -17,10 +17,10 @@ fn install_registers_logon_task_with_restart() {
 }
 
 #[test]
-fn firewall_rule_limited_to_tailscale_range_and_7070() {
+fn firewall_rule_limited_to_tailscale_range_and_7080() {
     let s = install_script(Path::new(r"C:\c0re-svc.exe"), &Config::default());
     assert!(s.contains("New-NetFirewallRule -DisplayName 'C0RE private (Tailscale)'"));
-    assert!(s.contains("-LocalPort 7070"));
+    assert!(s.contains("-LocalPort 7080"));
     assert!(s.contains("-RemoteAddress '100.64.0.0/10'"));
     assert!(s.contains("-Direction Inbound") && s.contains("-Protocol TCP") && s.contains("-Action Allow"));
     assert!(!s.contains("7071"), "public entrance must never get a firewall opening");

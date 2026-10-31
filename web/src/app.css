@@ -1,53 +1,64 @@
+/* C0RE terminal: monochrome, square, one red.
+   Ink on near-black; red only where something needs you (blocked, offline, errors) and on
+   the brand's 0. Type: Anton for headlines, Fragment Mono for everything you read, VT323
+   for machine output (boot log, gauge readout). */
 :root {
-  color-scheme: light dark;
-  --bg: #f4f4f6;
-  --surface: #ffffff;
-  --surface-2: #f0f0f3;
-  --text: #1b1b1f;
-  --text-2: #5c5d66;
-  --accent: #5646c8;
-  --accent-ink: #ffffff;
-  --accent-soft: rgba(86, 70, 200, 0.1);
-  --ok: #1d7a45;
-  --warn: #9a5800;
-  --danger: #b42318;
-  --line: rgba(27, 27, 31, 0.1);
-  --line-strong: rgba(27, 27, 31, 0.18);
-  --radius: 8px;
-  --radius-sm: 6px;
-  --ui: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
-  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121214;
-    --surface: #1b1b1f;
-    --surface-2: #232328;
-    --text: #ececef;
-    --text-2: #a3a4ad;
-    --accent: #a99cff;
-    --accent-ink: #15121f;
-    --accent-soft: rgba(169, 156, 255, 0.14);
-    --ok: #46d18a;
-    --warn: #f2b24a;
-    --danger: #ff7a6b;
-    --line: rgba(236, 236, 239, 0.1);
-    --line-strong: rgba(236, 236, 239, 0.2);
-  }
+  color-scheme: dark;
+  --bg: #070707;
+  --surface: #0e0e0e;
+  --surface-2: #161616;
+  --raise: #1f1f1f;
+  --line: #303030;
+  --line-strong: #4a4a4a;
+  --text: #f2f2f2;
+  --text-2: #969696;
+  --text-3: #5e5e5e;
+  --white: #ffffff;
+  --red: #ff3d3d;
+  --red-dim: rgba(255, 61, 61, 0.12);
+  /* Older names, kept so every page follows the same palette. */
+  --accent: var(--text);
+  --accent-ink: var(--bg);
+  --ok: var(--text);
+  --live: var(--red);
+  --warn: var(--red);
+  --danger: var(--red);
+  --shadow: 4px 4px 0 var(--line);
+  --display: 'Anton', 'Impact', sans-serif;
+  --ui: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --mono: 'Fragment Mono', ui-monospace, Consolas, monospace;
+  --term: 'VT323', ui-monospace, monospace;
 }
 
 * {
   box-sizing: border-box;
+  border-radius: 0;
 }
 
 html,
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--text);
-  font: 13px/18px var(--ui);
+  font: 14px/1.7 var(--ui);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dot grid under everything, scanlines over everything. */
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--line) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: repeating-linear-gradient(transparent 0, transparent 2px, rgba(0, 0, 0, 0.22) 3px, transparent 4px);
+  mix-blend-mode: multiply;
 }
 
 button,
@@ -59,23 +70,27 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 1px solid var(--white);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--white);
+  color: var(--bg);
 }
 
 h1 {
-  font-size: 22px;
-  line-height: 28px;
-  font-weight: 650;
+  font: 400 56px/1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
   margin: 0;
-  letter-spacing: -0.01em;
 }
 
 h2 {
-  font-size: 15px;
-  line-height: 20px;
-  font-weight: 600;
-  margin: 0 0 10px;
+  font: 400 24px/1.1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0 0 14px;
 }
 
 p {
@@ -92,25 +107,57 @@ p {
 
 .mono {
   font-family: var(--mono);
-  font-size: 12px;
+}
+
+/* Small uppercase system labels, as on a panel's silkscreen. */
+.label,
+th,
+legend,
+label.field,
+.field > span:first-child {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-2);
 }
 
 .panel {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
+  padding: 22px;
+}
+
+/* A tab on the panel's top-left edge, naming what's inside. */
+.panel[data-tab] {
+  padding-top: 38px;
+}
+
+.panel[data-tab]::before {
+  content: attr(data-tab);
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  padding: 2px 12px;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  background: var(--text);
+  color: var(--bg);
+}
+
+.striped {
+  background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 0 14px, transparent 14px 28px);
 }
 
 .stack {
   display: grid;
-  gap: 16px;
+  gap: 22px;
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -118,86 +165,109 @@ p {
   flex: 1;
 }
 
-/* Buttons */
+/* Buttons read as commands: [ new key ] */
 .btn {
-  min-height: 28px;
-  padding: 4px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
+  min-height: 38px;
+  padding: 7px 18px;
+  border: 1px solid var(--text);
+  background: transparent;
+  color: var(--white);
+  box-shadow: var(--shadow);
   cursor: pointer;
-  transition: background-color 0.12s, border-color 0.12s;
+  text-transform: lowercase;
+  white-space: nowrap;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.btn::before {
+  content: '[ ';
+}
+
+.btn::after {
+  content: ' ]';
 }
 
 .btn:hover {
   background: var(--surface-2);
 }
 
+.btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--line);
+}
+
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.4;
   cursor: default;
 }
 
 .btn.primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: var(--accent-ink);
-  font-weight: 600;
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--bg);
 }
 
 .btn.primary:hover {
-  filter: brightness(1.06);
+  background: #d9d9d9;
 }
 
 .btn.danger {
-  color: var(--danger);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.btn.icon {
+  min-width: 38px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+.btn.icon::before,
+.btn.icon::after {
+  content: none;
 }
 
 .link {
   background: none;
   border: 0;
   padding: 0;
-  color: var(--accent);
+  color: var(--white);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
 }
 
-/* Status chips: always a word, never colour alone */
+/* Status tags: [ PRIVATE ]. Always a word; colour only adds to it. */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 18px;
-  border: 1px solid var(--line);
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 20px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
   white-space: nowrap;
 }
 
-.chip::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.chip.ok {
-  color: var(--ok);
-}
-
 .chip.warn {
-  color: var(--warn);
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--bg);
 }
 
 .chip.danger {
-  color: var(--danger);
+  border-color: var(--red);
+  color: var(--red);
 }
 
 .chip.off {
-  color: var(--text-2);
+  color: var(--text-3);
+  border-style: dashed;
 }
 
 /* Tables */
@@ -208,21 +278,24 @@ table {
 
 th {
   text-align: left;
-  font-weight: 500;
-  color: var(--text-2);
-  font-size: 12px;
-  padding: 6px 8px;
+  font-weight: 400;
+  color: var(--text-3);
+  padding: 0 12px 10px;
   border-bottom: 1px solid var(--line);
 }
 
 td {
-  padding: 8px;
-  border-bottom: 1px solid var(--line);
+  padding: 11px 12px;
+  border-bottom: 1px dashed var(--line);
   vertical-align: middle;
 }
 
 tr:last-child td {
   border-bottom: 0;
+}
+
+td.num {
+  white-space: nowrap;
 }
 
 td.r,
@@ -237,9 +310,7 @@ th.r {
 /* Forms */
 label.field {
   display: grid;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-2);
+  gap: 6px;
 }
 
 input[type='text'],
@@ -247,57 +318,82 @@ input[type='password'],
 input[type='number'],
 input[type='url'],
 select {
-  min-height: 30px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  min-height: 38px;
+  padding: 6px 12px;
   border: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
   width: 100%;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+input:focus-visible,
+select:focus-visible {
+  outline: 0;
+  border-color: var(--white);
+}
+
+input[type='checkbox'] {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+input[type='checkbox']:checked::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--white);
 }
 
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: end;
 }
 
-/* Segmented control */
+/* Segmented control: the chosen option is a lit block, like the current nav item. */
 .segmented {
   display: inline-flex;
-  padding: 2px;
-  gap: 2px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
 }
 
 .segmented button {
-  min-height: 26px;
-  min-width: 72px;
-  padding: 2px 12px;
+  min-height: 34px;
+  min-width: 84px;
+  padding: 2px 14px;
   border: 0;
-  border-radius: 4px;
   background: transparent;
   cursor: pointer;
   color: var(--text-2);
+  text-transform: lowercase;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--line-strong);
 }
 
 .segmented button[aria-checked='true'] {
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: 0 0 0 1px var(--line-strong);
+  background: var(--white);
+  color: var(--bg);
 }
 
-/* Toggle */
+/* Toggle: a square switch with a square knob. */
 .toggle {
   position: relative;
-  width: 38px;
-  height: 22px;
-  border-radius: 999px;
+  width: 46px;
+  height: 24px;
   border: 1px solid var(--line-strong);
-  background: var(--surface-2);
+  background: var(--bg);
   cursor: pointer;
   padding: 0;
   flex: none;
@@ -306,35 +402,54 @@ select {
 .toggle::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 3px;
+  left: 3px;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: var(--text-2);
+  background: var(--text-3);
   transition: transform 0.12s;
 }
 
 .toggle[aria-checked='true'] {
-  background: var(--accent);
-  border-color: transparent;
+  border-color: var(--white);
 }
 
 .toggle[aria-checked='true']::after {
-  transform: translateX(16px);
-  background: var(--accent-ink);
+  transform: translateX(22px);
+  background: var(--white);
 }
 
 .message {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.message::before {
+  content: '> ';
+  color: var(--text-3);
 }
 
 .message.error {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-dim);
+}
+
+.message.error::before {
+  content: 'ERR ';
+  letter-spacing: 0.1em;
+}
+
+dialog {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 8px 8px 0 var(--line);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.78);
 }
 
 .sr-only {
@@ -346,8 +461,17 @@ select {
   white-space: nowrap;
 }
 
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     transition: none !important;
+    animation: none !important;
   }
 }

@@ -1,3 +1,5 @@
+mod common;
+use common::TestVault;
 use c0re::config::{Config, KeyDefaults};
 use c0re::db;
 use c0re::keys::{KeyPatch, KeyStore, NewKey, Reach};
@@ -6,7 +8,7 @@ use std::sync::{Arc, Mutex};
 fn store() -> (KeyStore, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let conn = db::open(&dir.path().join("c0re.db")).unwrap();
-    (KeyStore::new(Arc::new(Mutex::new(conn)), &Config::default()), dir)
+    (KeyStore::new(Arc::new(Mutex::new(conn)), &Config::default(), Arc::new(TestVault)), dir)
 }
 
 fn new_key(project: &str, reach: Reach) -> NewKey {
@@ -53,7 +55,7 @@ fn verify_rejects_garbage_without_panic() {
 fn secret_not_stored_in_plain() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("c0re.db");
-    let s = KeyStore::new(Arc::new(Mutex::new(db::open(&path).unwrap())), &Config::default());
+    let s = KeyStore::new(Arc::new(Mutex::new(db::open(&path).unwrap())), &Config::default(), Arc::new(TestVault));
     let (_k, secret) = s.create(new_key("lenz", Reach::Private)).unwrap();
     drop(s);
     let bytes = std::fs::read(&path).unwrap();

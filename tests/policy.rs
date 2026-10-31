@@ -17,6 +17,7 @@ fn key(reach: Reach, models: &[&str]) -> Key {
         note: String::new(),
         created_at: 0,
         last_used_at: None,
+        revealable: false,
     }
 }
 

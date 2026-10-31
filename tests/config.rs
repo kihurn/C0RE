@@ -4,7 +4,7 @@ use std::fs;
 #[test]
 fn defaults_match_spec() {
     let c = Config::default();
-    assert_eq!((c.private_port, c.public_port, c.funnel_port), (7070, 7071, 8443));
+    assert_eq!((c.private_port, c.public_port, c.funnel_port), (7080, 7071, 8443));
     assert_eq!(c.ollama_url, "http://127.0.0.1:11434");
     assert_eq!(c.tailscale_bin, "tailscale");
     assert_eq!(c.retention_days, 90);

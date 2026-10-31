@@ -18,6 +18,8 @@ export interface Key extends Limits {
   note: string
   created_at: number
   last_used_at: number | null
+  /** Whether the secret can be shown again (keys from before 0.2 can't). */
+  revealable: boolean
 }
 
 export interface UsageRecord {
@@ -106,7 +108,7 @@ export interface NewKey {
   note?: string
 }
 
-export type KeyPatch = Partial<Omit<Key, 'id' | 'created_at' | 'last_used_at'>>
+export type KeyPatch = Partial<Omit<Key, 'id' | 'created_at' | 'last_used_at' | 'revealable'>>
 
 export type Result<T> = { ok: true; data: T } | { ok: false; status: number; code: string; message: string }
 
@@ -170,6 +172,7 @@ export const api = {
   keys: () => call<Key[]>('GET', '/keys'),
   createKey: (k: NewKey) => call<{ key: Key; secret: string }>('POST', '/keys', k),
   updateKey: (id: string, p: KeyPatch) => call<Key>('PATCH', `/keys/${encodeURIComponent(id)}`, p),
+  revealKey: (id: string) => call<{ secret: string }>('POST', `/keys/${encodeURIComponent(id)}/reveal`),
   deleteKey: (id: string) => call<void>('DELETE', `/keys/${encodeURIComponent(id)}`),
   usage: (days: number) => call<{ days: number; summary: Summary }>('GET', `/usage?days=${days}`),
   models: () => call<Model[]>('GET', '/models'),

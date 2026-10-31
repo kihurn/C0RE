@@ -53,7 +53,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            private_port: 7070,
+            private_port: 7080,
             public_port: 7071,
             funnel_port: 8443,
             ollama_url: "http://127.0.0.1:11434".into(),

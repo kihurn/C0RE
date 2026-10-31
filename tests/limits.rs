@@ -9,7 +9,7 @@ fn key(id: &str, rate: u32, conc: u32, daily: u32) -> Key {
     Key {
         id: id.into(), project: "p".into(), reach: Reach::Private, models: vec![],
         rate_per_min: rate, daily_cap: daily, max_concurrent: conc, max_ctx: 8192, max_body_mb: 20,
-        note: String::new(), created_at: 0, last_used_at: None,
+        note: String::new(), created_at: 0, last_used_at: None, revealable: false,
     }
 }
 

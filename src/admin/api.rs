@@ -2,7 +2,7 @@
 
 use super::auth::{self, SessionCheck};
 use crate::config::KeyDefaults;
-use crate::keys::{KeyPatch, NewKey};
+use crate::keys::{KeyPatch, NewKey, Revealed};
 use crate::limits::FailureBlocker;
 use crate::policy::{Denied, Entrance};
 use crate::proxy::denied_response;
@@ -32,6 +32,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/overview", get(overview))
         .route("/keys", get(list_keys).post(create_key))
         .route("/keys/{id}", patch(update_key).delete(delete_key))
+        .route("/keys/{id}/reveal", post(reveal_key))
         .route("/usage", get(usage))
         .route("/models", get(models))
         .route("/settings", get(get_settings).put(put_settings))
@@ -218,6 +219,21 @@ async fn update_key(State(s): St, _a: Authed, Path(id): Path<String>, Json(p): J
         Ok(Some(k)) => Json(k).into_response(),
         Ok(None) => err(404, "not_found", "No such key."),
         Err(e) => err(400, "bad_request", e.to_string()),
+    }
+}
+
+async fn reveal_key(State(s): St, _a: Authed, Path(id): Path<String>) -> Response {
+    match s.keys.reveal(&id) {
+        Ok(Revealed::Secret(secret)) => {
+            ([(header::CACHE_CONTROL, "no-store")], Json(json!({ "secret": secret }))).into_response()
+        }
+        Ok(Revealed::NotSaved) => err(
+            409,
+            "not_saved",
+            "This key can't be shown again (it was made before C0RE 0.2, or on another Windows account). Delete it and make a new one.",
+        ),
+        Ok(Revealed::NotFound) => err(404, "not_found", "No such key."),
+        Err(e) => internal(e),
     }
 }
 

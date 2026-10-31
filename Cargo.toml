@@ -1,6 +1,6 @@
 [package]
 name = "c0re"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Private AI gateway in front of a local Ollama"
 license = "UNLICENSED"
@@ -52,3 +52,6 @@ opt-level = 3
 lto = "thin"
 strip = true
 codegen-units = 4
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }

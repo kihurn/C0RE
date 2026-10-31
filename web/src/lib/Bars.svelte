@@ -55,9 +55,11 @@
   .bars {
     display: flex;
     align-items: flex-end;
-    gap: 3px;
-    height: 72px;
-    border-bottom: 1px solid var(--line);
+    gap: 4px;
+    height: 132px;
+    border-bottom: 1px solid var(--line-strong);
+    /* Quarter lines, like graph paper. */
+    background: repeating-linear-gradient(to top, transparent 0 32px, var(--line) 32px 33px);
   }
   .col {
     flex: 1;
@@ -67,18 +69,25 @@
     min-width: 3px;
   }
   .ok {
-    background: var(--accent);
-    border-radius: 2px 2px 0 0;
+    background: var(--text);
     min-height: 0;
   }
+  .col:hover .ok {
+    background: var(--white);
+    box-shadow: 0 0 0 1px var(--white);
+  }
   .bad {
-    background: var(--danger);
-    border-radius: 2px 2px 0 0;
+    background: var(--red);
   }
   .axis {
     display: flex;
     justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+  figcaption {
     font-size: 12px;
-    margin-top: 4px;
   }
 </style>

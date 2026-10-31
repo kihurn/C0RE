@@ -22,9 +22,13 @@ pub fn public_router(state: Arc<AppState>) -> Router {
     proxy::api_router(state, Entrance::Public)
 }
 
-async fn bind(ip: IpAddr, port: u16, what: &str) -> Result<TcpListener> {
+async fn bind(ip: IpAddr, port: u16, what: &str, setting: &str) -> Result<TcpListener> {
     TcpListener::bind(SocketAddr::new(ip, port)).await.with_context(|| {
-        format!("Cannot listen on {ip}:{port} ({what}). Is port {port} already in use by another program?")
+        format!(
+            "Cannot listen on {ip}:{port} ({what}): another program is probably using port {port}. \
+             See which one in PowerShell: Get-Process -Id (Get-NetTCPConnection -LocalPort {port}).OwningProcess \
+             — then close it, or set {setting} to a free port in c0re.toml"
+        )
     })
 }
 
@@ -44,8 +48,8 @@ fn spawn_serve(listener: TcpListener, router: Router, mut stop: watch::Receiver<
 pub async fn serve(state: Arc<AppState>, shutdown: impl Future<Output = ()>) -> Result<()> {
     let cfg = state.config();
     let local = IpAddr::V4(Ipv4Addr::LOCALHOST);
-    let private_local = bind(local, cfg.private_port, "private entrance").await?;
-    let public_local = bind(local, cfg.public_port, "public entrance").await?;
+    let private_local = bind(local, cfg.private_port, "private entrance", "private_port").await?;
+    let public_local = bind(local, cfg.public_port, "public entrance", "public_port").await?;
     let (stop_tx, stop_rx) = watch::channel(false);
 
     let mut tasks = vec![
@@ -64,7 +68,7 @@ pub async fn serve(state: Arc<AppState>, shutdown: impl Future<Output = ()>) -> 
                 let runner = state.tailscale.clone();
                 let ip = tokio::task::spawn_blocking(move || tailscale_ipv4(runner.as_ref())).await.ok().flatten();
                 if let Some(ip) = ip {
-                    match bind(IpAddr::V4(ip), cfg.private_port, "private entrance on Tailscale").await {
+                    match bind(IpAddr::V4(ip), cfg.private_port, "private entrance on Tailscale", "private_port").await {
                         Ok(l) => {
                             tracing::info!("private entrance on Tailscale: {ip}:{}", cfg.private_port);
                             let _ = spawn_serve(l, private_router(state.clone()), stop.clone()).await;

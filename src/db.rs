@@ -43,6 +43,8 @@ const MIGRATIONS: &[&str] = &[
     CREATE INDEX usage_key_ts ON usage (key_id, ts);",
     // 3: small settings store (admin password hash)
     "CREATE TABLE settings (k TEXT PRIMARY KEY, v TEXT NOT NULL);",
+    // 4: key secrets encrypted by the vault, so they can be shown again (NULL: not kept)
+    "ALTER TABLE keys ADD COLUMN secret_enc BLOB;",
 ];
 
 pub fn open(path: &Path) -> Result<Connection> {

@@ -29,7 +29,7 @@ async fn start(with_password: bool) -> Admin {
             FakeRunner::ok("{}")
         }
     });
-    let state = AppState::open(dir.path(), runner.clone()).unwrap();
+    let state = AppState::open_with(dir.path(), runner.clone(), Arc::new(TestVault)).unwrap();
     state.cfg.write().unwrap().ollama_url = mock.url.clone();
     if with_password {
         set_password(&state, PASSWORD).unwrap();
@@ -140,6 +140,59 @@ async fn create_key_returns_secret_once() {
     assert_eq!(v["key"]["project"], "lenz");
     let list = req(&a, &s, reqwest::Method::GET, "/keys").send().await.unwrap().text().await.unwrap();
     assert!(list.contains("lenz") && !list.contains(&secret));
+}
+
+#[tokio::test]
+async fn reveal_shows_the_secret_again() {
+    let a = start(true).await;
+    let s = session(&a).await;
+    let v: Value = req(&a, &s, reqwest::Method::POST, "/keys")
+        .json(&json!({"project":"lenz","reach":"private"}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(v["key"]["revealable"], true);
+    let (id, secret) = (v["key"]["id"].as_str().unwrap(), v["secret"].as_str().unwrap());
+    let r = req(&a, &s, reqwest::Method::POST, &format!("/keys/{id}/reveal")).send().await.unwrap();
+    assert_eq!(r.status(), 200);
+    assert_eq!(r.headers().get("cache-control").unwrap(), "no-store");
+    let got: Value = r.json().await.unwrap();
+    assert_eq!(got["secret"], secret);
+    // Needs the anti-forgery header like every other change.
+    let r = client()
+        .post(format!("{}/admin/api/keys/{id}/reveal", a.url))
+        .header("cookie", &s.cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(r.status(), StatusCode::FORBIDDEN);
+    let r = req(&a, &s, reqwest::Method::POST, "/keys/k_nope00/reveal").send().await.unwrap();
+    assert_eq!(r.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn reveal_of_an_old_key_explains_why_not() {
+    let a = start(true).await;
+    let s = session(&a).await;
+    let (key, _) = a
+        .state
+        .keys
+        .create(c0re::keys::NewKey {
+            project: "old".into(),
+            reach: c0re::keys::Reach::Private,
+            models: vec![],
+            limits: None,
+            note: String::new(),
+        })
+        .unwrap();
+    a.state.conn.lock().unwrap().execute("UPDATE keys SET secret_enc = NULL", []).unwrap();
+    let r = req(&a, &s, reqwest::Method::POST, &format!("/keys/{}/reveal", key.id)).send().await.unwrap();
+    assert_eq!(r.status(), StatusCode::CONFLICT);
+    let v: Value = r.json().await.unwrap();
+    assert_eq!(v["error"]["code"], "not_saved");
 }
 
 #[tokio::test]

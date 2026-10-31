@@ -100,7 +100,7 @@ fn status_reports_engine_offline_when_no_ollama() {
     assert_eq!(code, 0, "{out}");
     let v: Value = serde_json::from_str(&out).unwrap();
     assert_eq!(v["engine"]["online"], false);
-    assert_eq!(v["private_port"], 7070);
+    assert_eq!(v["private_port"], 7080);
     assert_eq!(v["public"]["state"], "unavailable");
 }
 
@@ -130,4 +130,18 @@ fn serve_records_why_it_could_not_start() {
     assert_ne!(code, 0);
     let note = std::fs::read_to_string(d.path().join("startup-error.txt")).expect("startup-error.txt written");
     assert!(note.contains(&port.to_string()), "{note}");
+}
+
+#[test]
+fn keys_show_explains_when_a_key_cannot_be_shown() {
+    // Off Windows there's no DPAPI, so no key is kept; on Windows this path is for 0.1 keys.
+    let d = tempfile::tempdir().unwrap();
+    let (_, out) = run(d.path(), &["keys", "create", "--project", "lenz"]);
+    let id = out.split_whitespace().find(|w| w.starts_with("k_")).unwrap().to_string();
+    let (code, out) = run(d.path(), &["keys", "show", &id]);
+    assert_ne!(code, 0);
+    assert!(out.contains("can't be shown again"), "{out}");
+    let (code, out) = run(d.path(), &["keys", "show", "k_nope00"]);
+    assert_ne!(code, 0);
+    assert!(out.contains("No key with id k_nope00"), "{out}");
 }

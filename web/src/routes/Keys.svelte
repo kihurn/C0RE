@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte'
   import { api, type Key, type Limits, type Model, type Reach, type Settings } from '../lib/api'
   import ReachControl from '../lib/ReachControl.svelte'
+  import SecretCell from '../lib/SecretCell.svelte'
   import { formatCount, relativeTime } from '../lib/format'
 
   let { unauthorized }: { unauthorized: () => void } = $props()
@@ -23,6 +24,7 @@
   let formError = $state('')
   let busy = $state(false)
   let secret = $state<string | null>(null)
+  let secretKept = $state(false)
   let copied = $state(false)
   let confirmDelete = $state<string | null>(null)
 
@@ -101,6 +103,7 @@
       busy = false
       if (!r.ok) return r.code === 'unauthorized' ? unauthorized() : (formError = r.message)
       secret = r.data.secret
+      secretKept = r.data.key.revealable
       await tick()
       document.getElementById('secret-value')?.focus()
     }
@@ -148,52 +151,45 @@
       <button class="btn primary" type="button" onclick={openCreate}>Create your first key</button>
     </section>
   {:else}
-    <section class="panel table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Project</th><th>Reach</th><th>Models</th><th class="r">Per min</th><th class="r">Per day</th><th>Last used</th><th
-              ><span class="sr-only">Actions</span></th
-            >
-          </tr>
-        </thead>
-        <tbody>
-          {#each keys as k (k.id)}
-            <tr>
-              <td>
-                <div>{k.project}</div>
-                <div class="mono muted">{k.id}</div>
-              </td>
-              <td><span class="chip {reachChip[k.reach]}">{reachText[k.reach]}</span></td>
-              <td class="models">{k.models.length ? k.models.join(', ') : 'All models'}</td>
-              <td class="r num">{formatCount(k.rate_per_min)}</td>
-              <td class="r num">{formatCount(k.daily_cap)}</td>
-              <td class="muted">{relativeTime(k.last_used_at)}</td>
-              <td class="actions">
-                {#if confirmDelete === k.id}
-                  <span class="row">
-                    <span>Delete {k.project}'s key?</span>
-                    <button class="btn danger" type="button" onclick={() => remove(k.id)}>Delete</button>
-                    <button class="btn" type="button" onclick={() => (confirmDelete = null)}>Cancel</button>
-                  </span>
+    <section class="panel list" aria-label="Keys">
+      {#each keys as k (k.id)}
+        <article class="key" class:off={k.reach === 'off'}>
+          <div class="head">
+            <h2>{k.project}</h2>
+            <span class="mono muted id">{k.id}</span>
+            <span class="chip {reachChip[k.reach]}">{reachText[k.reach]}</span>
+            <span class="spacer"></span>
+            {#if confirmDelete === k.id}
+              <span class="row confirm">
+                <span>Delete {k.project}'s key? Apps using it stop working.</span>
+                <button class="btn danger" type="button" onclick={() => remove(k.id)}>Delete</button>
+                <button class="btn" type="button" onclick={() => (confirmDelete = null)}>Cancel</button>
+              </span>
+            {:else}
+              <span class="row actions">
+                {#if k.reach === 'off'}
+                  <button class="btn" type="button" onclick={() => setReach(k, 'private')}>Switch on</button>
                 {:else}
-                  <span class="row">
-                    {#if k.reach === 'off'}
-                      <button class="btn" type="button" onclick={() => setReach(k, 'private')}>Switch on</button>
-                    {:else}
-                      <button class="btn" type="button" onclick={() => setReach(k, 'off')}>Switch off</button>
-                    {/if}
-                    <button class="btn" type="button" onclick={() => openEdit(k)}>Edit</button>
-                    <button class="btn danger" type="button" aria-label="Delete {k.project}'s key" onclick={() => (confirmDelete = k.id)}
-                      >Delete</button
-                    >
-                  </span>
+                  <button class="btn" type="button" onclick={() => setReach(k, 'off')}>Switch off</button>
                 {/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+                <button class="btn" type="button" onclick={() => openEdit(k)}>Edit</button>
+                <button class="btn danger" type="button" aria-label="Delete {k.project}'s key" onclick={() => (confirmDelete = k.id)}
+                  >Delete</button
+                >
+              </span>
+            {/if}
+          </div>
+          <dl>
+            <div class="wide-cell"><dt>Key</dt><dd><SecretCell {k} {unauthorized} /></dd></div>
+            <div><dt>Models</dt><dd>{k.models.length ? k.models.join(', ') : 'All models'}</dd></div>
+            <div>
+              <dt>Limits</dt>
+              <dd><span class="num">{formatCount(k.rate_per_min)}</span> a minute, <span class="num">{formatCount(k.daily_cap)}</span> a day</dd>
+            </div>
+            <div><dt>Last used</dt><dd>{relativeTime(k.last_used_at)}</dd></div>
+          </dl>
+        </article>
+      {/each}
     </section>
   {/if}
 </div>
@@ -207,7 +203,11 @@
         <code id="secret-value" class="mono" tabindex="-1">{secret}</code>
         <button class="btn primary" type="button" onclick={copy}>{copied ? 'Copied' : 'Copy'}</button>
       </div>
-      <p class="warn-text">You won't see this key again. If you lose it, delete it and create a new one.</p>
+      {#if secretKept}
+        <p class="muted">You can see it again any time with the eye button on the Keys page.</p>
+      {:else}
+        <p class="warn-text">You won't see this key again. If you lose it, delete it and create a new one.</p>
+      {/if}
       <div class="row"><span class="spacer"></span><button class="btn" type="button" onclick={() => dialog?.close()}>Done</button></div>
     </div>
   {:else}
@@ -268,28 +268,68 @@
     gap: 8px;
     justify-items: start;
   }
-  .models {
-    max-width: 220px;
+  .list {
+    padding: 0;
   }
-  .actions {
-    text-align: right;
-    white-space: nowrap;
+  .key {
+    padding: 22px 24px;
+    display: grid;
+    gap: 14px;
   }
-  .actions .row {
-    justify-content: flex-end;
-    flex-wrap: nowrap;
+  .key + .key {
+    border-top: 1px dashed var(--line-strong);
+  }
+  .key.off h2,
+  .key.off dd {
+    color: var(--text-2);
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .head h2 {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1;
+  }
+  .id {
+    font-size: 12px;
+  }
+  .actions,
+  .confirm {
+    flex-wrap: wrap;
+  }
+  .key dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(440px, 2fr) repeat(3, minmax(120px, 1fr));
+    gap: 12px 24px;
+  }
+  .key dt {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .key dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  @media (max-width: 1100px) {
+    .key dl {
+      grid-template-columns: 1fr 1fr;
+    }
+    .wide-cell {
+      grid-column: 1 / -1;
+    }
   }
   dialog {
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 32px);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--text);
-    padding: 20px;
-  }
-  dialog::backdrop {
-    background: rgba(0, 0, 0, 0.35);
+    padding: 22px;
   }
   fieldset {
     border: 0;

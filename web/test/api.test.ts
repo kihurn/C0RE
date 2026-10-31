@@ -45,6 +45,21 @@ describe('api', () => {
     expect(header(calls[0]!, 'x-c0re-csrf')).toBeNull()
   })
 
+  it('reveals a key with a csrf-protected POST and reports not_saved', async () => {
+    setCsrf('tok123')
+    mockFetch(200, { secret: 'c0re_abc' })
+    const r = await api.revealKey('k_abc123')
+    expect(calls[0]!.url).toBe('/admin/api/keys/k_abc123/reveal')
+    expect(calls[0]!.init.method).toBe('POST')
+    expect(header(calls[0]!, 'x-c0re-csrf')).toBe('tok123')
+    expect(r.ok && r.data.secret).toBe('c0re_abc')
+
+    mockFetch(409, { error: { code: 'not_saved', message: "This key can't be shown again." } })
+    const old = await api.revealKey('k_old000')
+    expect(old.ok).toBe(false)
+    expect(!old.ok && old.code).toBe('not_saved')
+  })
+
   it('maps the error body to code and message', async () => {
     mockFetch(403, { error: { code: 'bad_csrf', message: 'Reload the page.' } })
     const r = await api.keys()

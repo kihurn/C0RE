@@ -218,3 +218,16 @@ pub fn client() -> reqwest::Client {
 pub fn chat_body(model: &str, stream: bool) -> Value {
     json!({"model": model, "stream": stream, "messages":[{"role":"user","content":"hi"}]})
 }
+
+/// Stand-in for Windows DPAPI in tests: reversible, and never stores the plain bytes.
+pub struct TestVault;
+
+impl c0re::vault::Vault for TestVault {
+    fn seal(&self, plain: &[u8]) -> anyhow::Result<Vec<u8>> {
+        Ok(b"TV1".iter().copied().chain(plain.iter().map(|b| b ^ 0x5a)).collect())
+    }
+    fn open(&self, sealed: &[u8]) -> anyhow::Result<Vec<u8>> {
+        let body = sealed.strip_prefix(b"TV1").ok_or_else(|| anyhow::anyhow!("not sealed by TestVault"))?;
+        Ok(body.iter().map(|b| b ^ 0x5a).collect())
+    }
+}

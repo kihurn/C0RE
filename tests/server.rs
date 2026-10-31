@@ -156,4 +156,7 @@ async fn port_in_use_fails_with_port_in_message() {
     }
     let err = c0re::server::serve(state, std::future::pending()).await.unwrap_err().to_string();
     assert!(err.contains(&port.to_string()), "{err}");
+    // Says how to find the program holding the port and how to move C0RE off it.
+    assert!(err.contains(&format!("Get-NetTCPConnection -LocalPort {port}")), "{err}");
+    assert!(err.contains("private_port"), "{err}");
 }

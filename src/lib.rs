@@ -12,6 +12,7 @@ pub mod proxy;
 pub mod server;
 pub mod tailscale;
 pub mod usage;
+pub mod vault;
 
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -38,11 +39,19 @@ impl AppState {
     /// Loads config and database from `dir`. Refuses to start if either is unusable:
     /// C0RE never runs without working key checks.
     pub fn open(dir: &Path, tailscale: Arc<dyn tailscale::Runner>) -> Result<Arc<AppState>> {
+        Self::open_with(dir, tailscale, vault::system())
+    }
+
+    pub fn open_with(
+        dir: &Path,
+        tailscale: Arc<dyn tailscale::Runner>,
+        vault: Arc<dyn vault::Vault>,
+    ) -> Result<Arc<AppState>> {
         let cfg = config::Config::load_or_create(dir)?;
         let conn = Arc::new(Mutex::new(db::open(&dir.join(DB_FILE))?));
         Ok(Arc::new(AppState {
             dir: dir.to_path_buf(),
-            keys: keys::KeyStore::new(conn.clone(), &cfg),
+            keys: keys::KeyStore::new(conn.clone(), &cfg, vault),
             usage: usage::UsageStore::new(conn.clone()),
             cfg: RwLock::new(cfg),
             conn,

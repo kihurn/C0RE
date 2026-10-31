@@ -1,7 +1,7 @@
 //! The `c0re` command-line tool. Works directly on the PC's data folder; no login needed.
 
 use crate::config::{Config, KeyDefaults, data_dir};
-use crate::keys::{Key, KeyPatch, NewKey, Reach};
+use crate::keys::{Key, KeyPatch, NewKey, Reach, Revealed};
 use crate::tailscale::{FunnelState, SystemRunner, funnel_off, funnel_on, funnel_status, tailscale_ipv4};
 use crate::{AppState, admin, now_secs};
 use anyhow::{Context, Result, bail};
@@ -89,7 +89,7 @@ struct LimitArgs {
 
 #[derive(Subcommand)]
 enum KeysCmd {
-    /// Create a key (its secret is shown once)
+    /// Create a key
     Create {
         #[arg(long)]
         project: String,
@@ -116,6 +116,8 @@ enum KeysCmd {
         #[arg(long)]
         public: bool,
     },
+    /// Show a key's secret again
+    Show { id: String },
     Delete { id: String },
     /// Change a key's project name, reach, models or limits
     Edit {
@@ -261,7 +263,11 @@ fn keys(dir: &Path, cmd: KeysCmd, out: &mut dyn Write) -> Result<i32> {
             writeln!(out)?;
             writeln!(out, "    {secret}")?;
             writeln!(out)?;
-            writeln!(out, "Copy it now: it won't be shown again. Projects send it as 'Authorization: Bearer <key>'.")?;
+            if key.revealable {
+                writeln!(out, "Projects send it as 'Authorization: Bearer <key>'. See it again with: c0re keys show {}", key.id)?;
+            } else {
+                writeln!(out, "Copy it now: it won't be shown again. Projects send it as 'Authorization: Bearer <key>'.")?;
+            }
         }
         KeysCmd::List { json } => {
             let keys = state.keys.list()?;
@@ -276,6 +282,14 @@ fn keys(dir: &Path, cmd: KeysCmd, out: &mut dyn Write) -> Result<i32> {
             let reach = if public { Reach::Public } else { Reach::Private };
             edit(&state, &id, KeyPatch { reach: Some(reach), ..Default::default() }, out)?
         }
+        KeysCmd::Show { id } => match state.keys.reveal(&id)? {
+            Revealed::Secret(secret) => writeln!(out, "{secret}")?,
+            Revealed::NotSaved => bail!(
+                "Key {id} can't be shown again (it was made before C0RE 0.2, or on another Windows account). \
+                 Delete it and make a new one."
+            ),
+            Revealed::NotFound => bail!("No key with id {id}."),
+        },
         KeysCmd::Delete { id } => {
             if !state.keys.delete(&id)? {
                 bail!("No key with id {id}.");

@@ -1,9 +1,11 @@
 //! API keys: generation, hashing, verification and storage.
 //!
 //! Secrets are 256-bit random values, so a fast hash (SHA-256) is enough; a slow
-//! password hash would only add latency to every request.
+//! password hash would only add latency to every request. Checks use only the hash; a
+//! copy encrypted by the vault is kept so the dashboard can show the key again.
 
 use crate::config::{Config, KeyDefaults};
+use crate::vault::Vault;
 use anyhow::{Result, anyhow, bail};
 use rusqlite::{Connection, OptionalExtension, Row, params};
 use serde::{Deserialize, Serialize};
@@ -62,6 +64,18 @@ pub struct Key {
     pub note: String,
     pub created_at: i64,
     pub last_used_at: Option<i64>,
+    /// Whether the secret can be shown again (false for keys made before 0.2).
+    #[serde(default)]
+    pub revealable: bool,
+}
+
+/// What `KeyStore::reveal` found.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Revealed {
+    Secret(String),
+    /// The key exists but its secret wasn't kept, or can't be decrypted here.
+    NotSaved,
+    NotFound,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -92,6 +106,7 @@ pub struct KeyPatch {
 #[derive(Clone)]
 pub struct KeyStore {
     conn: Arc<Mutex<Connection>>,
+    vault: Arc<dyn Vault>,
     private_defaults: KeyDefaults,
     public_defaults: KeyDefaults,
 }
@@ -133,6 +148,7 @@ fn now() -> i64 {
 }
 
 const COLS: &str = "id, project, reach, models, rate_per_min, daily_cap, max_concurrent, max_ctx, max_body_mb, note, created_at, last_used_at";
+const SELECT: &str = "SELECT id, project, reach, models, rate_per_min, daily_cap, max_concurrent, max_ctx, max_body_mb, note, created_at, last_used_at, secret_enc IS NOT NULL";
 
 fn from_row(r: &Row) -> rusqlite::Result<Key> {
     let reach: String = r.get(2)?;
@@ -150,19 +166,21 @@ fn from_row(r: &Row) -> rusqlite::Result<Key> {
         note: r.get(9)?,
         created_at: r.get(10)?,
         last_used_at: r.get(11)?,
+        revealable: r.get(12)?,
     })
 }
 
 impl KeyStore {
-    pub fn new(conn: Arc<Mutex<Connection>>, cfg: &Config) -> Self {
-        KeyStore { conn, private_defaults: cfg.private_defaults, public_defaults: cfg.public_defaults }
+    pub fn new(conn: Arc<Mutex<Connection>>, cfg: &Config, vault: Arc<dyn Vault>) -> Self {
+        KeyStore { conn, vault, private_defaults: cfg.private_defaults, public_defaults: cfg.public_defaults }
     }
 
     fn db(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// Creates a key and returns it with its secret. The secret is never stored or shown again.
+    /// Creates a key and returns it with its secret. The secret itself is stored only
+    /// encrypted by the vault; without one it is shown this once.
     pub fn create(&self, k: NewKey) -> Result<(Key, String)> {
         validate_project(&k.project)?;
         let lim = k.limits.unwrap_or(match k.reach {
@@ -171,6 +189,13 @@ impl KeyStore {
         });
         let secret = format!("{SECRET_PREFIX}{}", random_string(BASE62, SECRET_LEN)?);
         let id = format!("k_{}", random_string(BASE32, 6)?);
+        let sealed = match self.vault.seal(secret.as_bytes()) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                tracing::warn!("key {id} works but can't be shown again: {e:#}");
+                None
+            }
+        };
         let key = Key {
             id,
             project: k.project,
@@ -184,10 +209,11 @@ impl KeyStore {
             note: k.note,
             created_at: now(),
             last_used_at: None,
+            revealable: sealed.is_some(),
         };
         let prefix = &secret[SECRET_PREFIX.len()..SECRET_PREFIX.len() + LOOKUP_LEN];
         self.db().execute(
-            &format!("INSERT INTO keys ({COLS}, prefix, hash) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)"),
+            &format!("INSERT INTO keys ({COLS}, prefix, hash, secret_enc) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)"),
             params![
                 key.id,
                 key.project,
@@ -202,7 +228,8 @@ impl KeyStore {
                 key.created_at,
                 key.last_used_at,
                 prefix,
-                hash(&secret)
+                hash(&secret),
+                sealed
             ],
         )?;
         Ok((key, secret))
@@ -216,8 +243,8 @@ impl KeyStore {
         };
         let db = self.db();
         let row: Option<(String, Key)> = db
-            .query_row(&format!("SELECT {COLS}, hash FROM keys WHERE prefix = ?1"), [&body[..LOOKUP_LEN]], |r| {
-                Ok((r.get(12)?, from_row(r)?))
+            .query_row(&format!("{SELECT}, hash FROM keys WHERE prefix = ?1"), [&body[..LOOKUP_LEN]], |r| {
+                Ok((r.get(13)?, from_row(r)?))
             })
             .optional()?;
         Ok(row.and_then(|(stored, key)| {
@@ -227,13 +254,13 @@ impl KeyStore {
 
     pub fn list(&self) -> Result<Vec<Key>> {
         let db = self.db();
-        let mut st = db.prepare(&format!("SELECT {COLS} FROM keys ORDER BY created_at, id"))?;
+        let mut st = db.prepare(&format!("{SELECT} FROM keys ORDER BY created_at, id"))?;
         let rows = st.query_map([], from_row)?.collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
 
     pub fn get(&self, id: &str) -> Result<Option<Key>> {
-        Ok(self.db().query_row(&format!("SELECT {COLS} FROM keys WHERE id = ?1"), [id], from_row).optional()?)
+        Ok(self.db().query_row(&format!("{SELECT} FROM keys WHERE id = ?1"), [id], from_row).optional()?)
     }
 
     pub fn update(&self, id: &str, p: KeyPatch) -> Result<Option<Key>> {
@@ -283,6 +310,30 @@ impl KeyStore {
             ],
         )?;
         Ok(Some(k))
+    }
+
+    /// The key's secret, decrypted. Shown only if it still matches the key's hash, so a
+    /// blob moved between rows can never reveal another key.
+    pub fn reveal(&self, id: &str) -> Result<Revealed> {
+        let row: Option<(Option<Vec<u8>>, String)> = self
+            .db()
+            .query_row("SELECT secret_enc, hash FROM keys WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .optional()?;
+        let Some((sealed, stored)) = row else { return Ok(Revealed::NotFound) };
+        let Some(sealed) = sealed else { return Ok(Revealed::NotSaved) };
+        let secret = match self.vault.open(&sealed).map(String::from_utf8) {
+            Ok(Ok(s)) => s,
+            Ok(Err(_)) => return Ok(Revealed::NotSaved),
+            Err(e) => {
+                tracing::warn!("key {id}: {e:#}");
+                return Ok(Revealed::NotSaved);
+            }
+        };
+        if bool::from(stored.as_bytes().ct_eq(hash(&secret).as_bytes())) {
+            Ok(Revealed::Secret(secret))
+        } else {
+            Ok(Revealed::NotSaved)
+        }
     }
 
     pub fn delete(&self, id: &str) -> Result<bool> {

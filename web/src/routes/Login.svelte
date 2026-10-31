@@ -19,21 +19,25 @@
 </script>
 
 <main class="login">
-  <form class="panel stack" onsubmit={submit}>
-    <h1 class="brand" aria-label="C0RE"><span aria-hidden="true">C</span><Core online={true} size={22} /><span aria-hidden="true">RE</span></h1>
+  <form class="panel" data-tab="RESTRICTED_ACCESS" onsubmit={submit}>
+    <h1><Core online={true} size={84} /></h1>
+    <ol class="boot" aria-hidden="true">
+      <li>&gt; connect {location.host} ....... <b>OK</b></li>
+      <li>&gt; private ai gateway ......... <b>OK</b></li>
+      <li>&gt; {passwordSet ? 'auth required.' : 'no admin password set.'}</li>
+    </ol>
     {#if passwordSet}
       <label class="field">
-        Admin password
+        admin password
         <!-- svelte-ignore a11y_autofocus -->
         <input type="password" bind:value={password} autocomplete="current-password" required autofocus />
       </label>
       {#if error}<p class="message error" role="alert">{error}</p>{/if}
-      <button class="btn primary" type="submit" disabled={busy || !password}>{busy ? 'Logging in…' : 'Log in'}</button>
+      <button class="btn primary" type="submit" disabled={busy || !password}>{busy ? 'logging in…' : 'log in'}</button>
     {:else}
-      <p>No admin password is set yet.</p>
-      <p class="muted">On the PC, open PowerShell and run:</p>
-      <pre class="mono">c0re admin set-password</pre>
-      <button class="btn" type="button" onclick={() => location.reload()}>I've set it — reload</button>
+      <p>No admin password is set yet. On the PC, open PowerShell and run:</p>
+      <pre>c0re admin set-password</pre>
+      <button class="btn" type="button" onclick={() => location.reload()}>reload</button>
     {/if}
   </form>
 </main>
@@ -46,18 +50,33 @@
     padding: 16px;
   }
   form {
-    width: min(360px, 100%);
+    width: min(420px, 100%);
+    display: grid;
+    gap: 20px;
+    padding: 44px 30px 30px;
+    box-shadow: 8px 8px 0 var(--line);
   }
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-    letter-spacing: 0.04em;
+  h1 {
+    line-height: 1;
+  }
+  .boot {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font: 400 18px/1.35 var(--term);
+    color: var(--text-2);
+  }
+  .boot b {
+    font-weight: 400;
+    color: var(--white);
   }
   pre {
     margin: 0;
-    padding: 8px 10px;
-    background: var(--surface-2);
-    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+  }
+  .btn {
+    justify-self: start;
   }
 </style>

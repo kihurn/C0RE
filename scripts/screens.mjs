@@ -14,9 +14,9 @@ const now = Math.floor(Date.now() / 1000)
 const hour = Math.floor(now / 3600) * 3600
 const perHour = Array.from({ length: 24 }, (_, i) => ({ hour: hour - (23 - i) * 3600, requests: [0,0,1,0,0,0,0,2,6,11,14,9,4,7,12,15,13,8,5,9,14,10,6,3][i], blocked: i === 15 ? 3 : i === 20 ? 1 : 0 }))
 const keys = [
-  { id: 'k_lenz01', project: 'lenz', reach: 'private', models: ['qwen3-vl:8b-instruct', 'qwen3-vl:4b-instruct'], rate_per_min: 60, daily_cap: 2000, max_concurrent: 2, max_ctx: 8192, max_body_mb: 20, note: '', created_at: now - 86400 * 3, last_used_at: now - 120 },
-  { id: 'k_site7q', project: 'study-notes-site', reach: 'public', models: ['qwen3-vl:4b-instruct'], rate_per_min: 20, daily_cap: 500, max_concurrent: 1, max_ctx: 8192, max_body_mb: 8, note: '', created_at: now - 86400, last_used_at: now - 3600 * 5 },
-  { id: 'k_old2xx', project: 'experiment', reach: 'off', models: [], rate_per_min: 60, daily_cap: 2000, max_concurrent: 2, max_ctx: 8192, max_body_mb: 20, note: '', created_at: now - 86400 * 20, last_used_at: null }
+  { id: 'k_lenz01', project: 'lenz', reach: 'private', models: ['qwen3-vl:8b-instruct', 'qwen3-vl:4b-instruct'], rate_per_min: 60, daily_cap: 2000, max_concurrent: 2, max_ctx: 8192, max_body_mb: 20, note: '', created_at: now - 86400 * 3, last_used_at: now - 120, revealable: true },
+  { id: 'k_site7q', project: 'study-notes-site', reach: 'public', models: ['qwen3-vl:4b-instruct'], rate_per_min: 20, daily_cap: 500, max_concurrent: 1, max_ctx: 8192, max_body_mb: 8, note: '', created_at: now - 86400, last_used_at: now - 3600 * 5, revealable: true },
+  { id: 'k_old2xx', project: 'experiment', reach: 'off', models: [], rate_per_min: 60, daily_cap: 2000, max_concurrent: 2, max_ctx: 8192, max_body_mb: 20, note: '', created_at: now - 86400 * 20, last_used_at: null, revealable: false }
 ]
 const recent = [
   { ts: now - 40, key_id: 'k_lenz01', project: 'lenz', entrance: 'private', path: '/api/chat', model: 'qwen3-vl:8b-instruct', status: 200, block_reason: null, latency_ms: 1840, ttfb_ms: 310, prompt_tokens: 812, output_tokens: 96 },
@@ -39,7 +39,7 @@ const api = {
   settings: { private_defaults: { rate_per_min: 60, daily_cap: 2000, max_concurrent: 2, max_ctx: 8192, max_body_mb: 20 }, public_defaults: { rate_per_min: 20, daily_cap: 500, max_concurrent: 1, max_ctx: 8192, max_body_mb: 8 }, retention_days: 90, max_db_mb: 100 },
   public: { state: 'on', url: 'https://kihurn-desktop.tail1234.ts.net:8443' }
 }
-const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml' }
+const types = { '.woff2': 'font/woff2', '.woff': 'font/woff', '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml' }
 
 const browser = await chromium.launch()
 const shots = [
@@ -48,9 +48,10 @@ const shots = [
   ['usage', '/admin/usage'],
   ['models', '/admin/models'],
   ['settings', '/admin/settings'],
-  ['secret', '/admin/keys']
+  ['secret', '/admin/keys'],
+  ['reveal', '/admin/keys']
 ]
-for (const scheme of ['light', 'dark']) {
+for (const scheme of ['dark']) {
   for (const [w, h, tag] of [[1180, 820, 'desktop'], [390, 844, 'phone']]) {
     const page = await browser.newPage({ viewport: { width: w, height: h }, colorScheme: scheme, deviceScaleFactor: 2 })
     await page.route('**/admin/**', async (route) => {
@@ -60,6 +61,7 @@ for (const scheme of ['light', 'dark']) {
         if (name === 'keys' && route.request().method() === 'POST') {
           return route.fulfill({ json: { key: { ...keys[0], id: 'k_new123', project: 'lenz-laptop' }, secret: 'c0re_7XkQ2mPz9LrT4vBn8WcYd3HsJf6GaKe5NuQ1oVxZt0R' } })
         }
+        if (url.pathname.endsWith('/reveal')) return route.fulfill({ json: { secret: 'c0re_4fT9xQ2mLp7RkW3zBn8VcYd1HsJe6GaKu5NoQ0iUxZy' } })
         return route.fulfill({ json: api[name] ?? {} })
       }
       let file = url.pathname.slice('/admin/'.length)
@@ -67,13 +69,17 @@ for (const scheme of ['light', 'dark']) {
       return route.fulfill({ body: readFileSync(join(dist, file)), contentType: types[extname(file)] ?? 'application/octet-stream' })
     })
     for (const [name, path] of shots) {
-      if (tag === 'phone' && !['overview', 'keys'].includes(name)) continue
+      if (tag === 'phone' && !['overview', 'keys', 'reveal'].includes(name)) continue
       await page.goto(`http://c0re.test${path}`)
-      await page.waitForTimeout(250)
+      await page.waitForTimeout(2000)
       if (name === 'secret') {
         await page.getByRole('button', { name: 'New key' }).click()
         await page.getByLabel('Project name').fill('lenz-laptop')
         await page.getByRole('button', { name: 'Create key' }).click()
+        await page.waitForTimeout(200)
+      }
+      if (name === 'reveal') {
+        await page.getByRole('button', { name: "Show lenz's key" }).click()
         await page.waitForTimeout(200)
       }
       await page.screenshot({ path: join(out, `${name}-${tag}-${scheme}.png`), fullPage: name !== 'secret' })

@@ -3,7 +3,9 @@ target/
 web/node_modules/
 web/dist/
 dist/
+.clone-ui/
 *.zip
 *.bundle
 c0re-*-source/
+c0re-*-windows-x64/
 /2026-10-30-c0re*.md
