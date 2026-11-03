@@ -1,5 +1,5 @@
 # C0RE
-
+'''
       ___           ___           ___           ___     
      /\  \         /\  \         /\  \         /\  \    
     /::\  \       /::\  \       /::\  \       /::\  \   
@@ -12,6 +12,7 @@
     \:\__\        \::/  /       |:|  |        \:\__\    
      \/__/         \/__/         \|__|         \/__/    
 
+'''
 
 A private AI gateway for your own PC. C0RE sits in front of [Ollama](https://ollama.com) and
 lets your projects use your GPU from anywhere — each with its own key — without ever
